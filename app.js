@@ -51,28 +51,6 @@ var dbPort = process.env.DB_PORT;
 var dbProtocol = process.env.DB_PROTOCOL;
 var dbPrefix = process.env.DB_PREFIX;
 var databaseName = dbPrefix + constants.TRIGGER_DB_SUFFIX;
-var triggerDB = createTriggerDb();
-
-var providerUtils = new ProviderUtils (tid, logger, app, retriesBeforeDelete, triggerDB, triggerFireLimit, routerHost);
-var providerRAS = new ProviderRAS (tid, logger, providerUtils);
-var providerUpdate = new ProviderUpdate (tid, logger, providerUtils);
-var providerCreate = new ProviderCreate (tid, logger, providerUtils);
-var providerDelete = new ProviderDelete (tid, logger, providerUtils);
-
-// Map of triggers managed by this Provider
-var triggers = {};
-
-// RAS Endpoint
-app.get(providerRAS.endPoint, providerRAS.ras);
-
-// Endpoint for Update OR Create a Trigger
-app.put(providerUpdate.endPoint, providerUtils.authorize, providerUpdate.update);
-
-// Endpoint for Creating a new Trigger
-app.post(providerCreate.endPoint, providerUtils.authorize, providerCreate.create);
-
-// Endpoint for Deleting an existing Trigger.
-app.delete(providerDelete.endPoint, providerUtils.authorize, providerDelete.delete);
 
 // Create the Provider Server
 var server = http.createServer(app);
@@ -80,17 +58,7 @@ server.listen(app.get('port'), function(){
     logger.info(tid, 'server.listen', 'Express server listening on port ' + app.get('port'));
 });
 
-function createTriggerDb () {
-
-  var nanop = null;
-  var tDB = null;
-
-  if (dbProvider === 'Cloudant') {
-    nanop = require('nano')('https://' + dbUsername + ':' + dbPassword + '@' + dbUsername + '.cloudant.com' + ':' + dbPort);
-  } else if (dbProvider === 'CouchDB') {
-    // TODO: add couch db provider create logic
-    nanop = require('nano')('https://' + dbUsername + ':' + dbPassword + '@' + dbHost + ':' + dbPort);
-  }
+function createDatabase (nanop) {
 
   if (nanop !== null) {
     nanop.db.create(databaseName, function(err, body, header) {
@@ -100,11 +68,34 @@ function createTriggerDb () {
           logger.info(tid, databaseName, err);
         }
     });
-
-    tDB = nanop.db.use(databaseName);
+    var chDb = nanop.db.use(databaseName);
+    return chDb;
+  } else {
+    return null;
   }
 
-  return tDB;
+}
+
+function createTriggerDb () {
+
+  var nanop = null;
+
+  var promise = new Promise(function(resolve, reject) {
+
+    nanop = require('nano')(dbProtocol + '://' + dbHost + ':' + dbPort);
+    logger.info('url is ' +  dbProtocol + '://' + dbHost + ':' + dbPort);
+    nanop.auth(dbUsername, dbPassword, function (err, body, headers) {
+      if (err) {
+        reject(err);
+      } else {
+        nanop = require('nano')({url: dbProtocol + '://' + dbHost + ':' + dbPort, cookie: headers['set-cookie']});
+        resolve(createDatabase (nanop));
+      }
+    });
+
+  });
+
+  return promise;
 
 }
 
@@ -117,7 +108,37 @@ function init(server) {
             process.exit(-1);
         }
     }
-    providerUtils.initAllTriggers();
+
+    ///
+    var triggerDBPromise = createTriggerDb();
+    triggerDBPromise.then(function (nanoDb) {
+
+      logger.info(tid, 'init', 'trigger storage database details: ', nanoDb);
+
+      var providerUtils = new ProviderUtils (tid, logger, app, retriesBeforeDelete, nanoDb, dbProvider, triggerFireLimit, routerHost);
+      var providerRAS = new ProviderRAS (tid, logger, providerUtils);
+      var providerUpdate = new ProviderUpdate (tid, logger, providerUtils);
+      var providerCreate = new ProviderCreate (tid, logger, providerUtils);
+      var providerDelete = new ProviderDelete (tid, logger, providerUtils);
+
+      // RAS Endpoint
+      app.get(providerRAS.endPoint, providerRAS.ras);
+
+      // Endpoint for Update OR Create a Trigger
+      app.put(providerUpdate.endPoint, providerUtils.authorize, providerUpdate.update);
+
+      // Endpoint for Creating a new Trigger
+      app.post(providerCreate.endPoint, providerUtils.authorize, providerCreate.create);
+
+      // Endpoint for Deleting an existing Trigger.
+      app.delete(providerDelete.endPoint, providerUtils.authorize, providerDelete.delete);
+
+      providerUtils.initAllTriggers();
+    }, function(err) {
+      logger.info(tid, 'init', 'found an error creating database: ', err);
+    })
+    ///
+
 }
 
 init(server);
