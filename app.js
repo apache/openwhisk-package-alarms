@@ -80,10 +80,12 @@ function createTriggerDb () {
 
   var nanop = null;
 
+  // no need for a promise here, but leaving code inplace until we prove out the question of cookie usage
   var promise = new Promise(function(resolve, reject) {
 
     nanop = require('nano')(dbProtocol + '://' + dbHost + ':' + dbPort);
     logger.info('url is ' +  dbProtocol + '://' + dbHost + ':' + dbPort);
+    /*
     nanop.auth(dbUsername, dbPassword, function (err, body, headers) {
       if (err) {
         reject(err);
@@ -92,7 +94,9 @@ function createTriggerDb () {
         resolve(createDatabase (nanop));
       }
     });
-
+	*/
+    resolve(createDatabase (nanop));
+    
   });
 
   return promise;
