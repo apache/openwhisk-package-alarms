@@ -1,2 +1,2 @@
 ext.dockerImageName = 'catalog_alarms'
-apply from: '../../../gradle/docker.gradle'
+apply from: 'gradle/docker.gradle'
