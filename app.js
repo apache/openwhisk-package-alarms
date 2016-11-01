@@ -44,7 +44,6 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 // If it does not already exist, create the triggers database.  This is the database that will
 // store the managed triggers.
 //
-var dbProvider = process.env.DB_PROVIDER;
 var dbUsername = process.env.DB_USERNAME;
 var dbPassword = process.env.DB_PASSWORD;
 var dbHost = process.env.DB_HOST;
@@ -86,16 +85,6 @@ function createTriggerDb () {
 
     nanop = require('nano')(dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
     logger.info('url is ' +  dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
-    /*
-    nanop.auth(dbUsername, dbPassword, function (err, body, headers) {
-      if (err) {
-        reject(err);
-      } else {
-        nanop = require('nano')({url: dbProtocol + '://' + dbHost + ':' + dbPort, cookie: headers['set-cookie']});
-        resolve(createDatabase (nanop));
-      }
-    });
-	*/
     resolve(createDatabase (nanop));
     
   });
@@ -120,7 +109,7 @@ function init(server) {
 
       logger.info(tid, 'init', 'trigger storage database details: ', nanoDb);
 
-      var providerUtils = new ProviderUtils (tid, logger, app, retriesBeforeDelete, nanoDb, dbProvider, triggerFireLimit, routerHost);
+      var providerUtils = new ProviderUtils (tid, logger, app, retriesBeforeDelete, nanoDb, triggerFireLimit, routerHost);
       var providerRAS = new ProviderRAS (tid, logger, providerUtils);
       var providerHealth = new ProviderHealth (tid, logger, providerUtils);
       var providerUpdate = new ProviderUpdate (tid, logger, providerUtils);
@@ -145,8 +134,7 @@ function init(server) {
       providerUtils.initAllTriggers();
     }, function(err) {
       logger.info(tid, 'init', 'found an error creating database: ', err);
-    })
-    ///
+    });
 
 }
 
