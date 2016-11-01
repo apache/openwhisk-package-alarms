@@ -10,6 +10,7 @@ var bodyParser = require('body-parser');
 var logger = require('./Logger');
 
 var ProviderUtils = require('./lib/utils.js');
+var ProviderHealth = require('./lib/health.js');
 var ProviderRAS = require('./lib/ras.js');
 var ProviderUpdate = require('./lib/update.js');
 var ProviderCreate = require('./lib/create.js');
@@ -83,8 +84,8 @@ function createTriggerDb () {
   // no need for a promise here, but leaving code inplace until we prove out the question of cookie usage
   var promise = new Promise(function(resolve, reject) {
 
-	nanop = require('nano')(dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost + ':' + dbPort);
-	logger.info('url is ' +  dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost + ':' + dbPort);
+    nanop = require('nano')(dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
+    logger.info('url is ' +  dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
     /*
     nanop.auth(dbUsername, dbPassword, function (err, body, headers) {
       if (err) {
@@ -121,12 +122,16 @@ function init(server) {
 
       var providerUtils = new ProviderUtils (tid, logger, app, retriesBeforeDelete, nanoDb, dbProvider, triggerFireLimit, routerHost);
       var providerRAS = new ProviderRAS (tid, logger, providerUtils);
+      var providerHealth = new ProviderHealth (tid, logger, providerUtils);
       var providerUpdate = new ProviderUpdate (tid, logger, providerUtils);
       var providerCreate = new ProviderCreate (tid, logger, providerUtils);
       var providerDelete = new ProviderDelete (tid, logger, providerUtils);
 
       // RAS Endpoint
       app.get(providerRAS.endPoint, providerRAS.ras);
+
+      // Health Endpoint
+      app.get(providerHealth.endPoint, providerHealth.health);
 
       // Endpoint for Update OR Create a Trigger
       app.put(providerUpdate.endPoint, providerUtils.authorize, providerUpdate.update);
