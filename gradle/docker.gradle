@@ -22,7 +22,7 @@ import groovy.time.*
  */
 
 ext {
-    dockerRegistry = project.hasProperty('dockerRegistry') ? dockerRegistry + '/' : ''
+    dockerRegistry = project.hasProperty('dockerRegistry') && dockerRegistry != '' ? dockerRegistry + '/' : ''
     dockerImageTag = project.hasProperty('dockerImageTag') ? dockerImageTag : 'latest'
     dockerImagePrefix = project.hasProperty('dockerImagePrefix') ? dockerImagePrefix : 'whisk'
     dockerTimeout = project.hasProperty('dockerTimeout') ? dockerTimeout.toInteger() : 840
