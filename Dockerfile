@@ -18,7 +18,7 @@ ADD package.json /alarmsTrigger/
 RUN cd /alarmsTrigger; npm install
 
 # App
-ADD . /alarmsTrigger
+ADD provider/. /alarmsTrigger/
 
 EXPOSE 8080
 
