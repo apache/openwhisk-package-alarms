@@ -12,7 +12,6 @@ var logger = require('./Logger');
 var ProviderUtils = require('./lib/utils.js');
 var ProviderHealth = require('./lib/health.js');
 var ProviderRAS = require('./lib/ras.js');
-var ProviderUpdate = require('./lib/update.js');
 var ProviderCreate = require('./lib/create.js');
 var ProviderDelete = require('./lib/delete.js');
 var constants = require('./lib/constants.js');
@@ -104,7 +103,6 @@ function init(server) {
       var providerUtils = new ProviderUtils (tid, logger, app, retriesBeforeDelete, nanoDb, routerHost);
       var providerRAS = new ProviderRAS (tid, logger, providerUtils);
       var providerHealth = new ProviderHealth (tid, logger, providerUtils);
-      var providerUpdate = new ProviderUpdate (tid, logger, providerUtils);
       var providerCreate = new ProviderCreate (tid, logger, providerUtils);
       var providerDelete = new ProviderDelete (tid, logger, providerUtils);
 
@@ -113,9 +111,6 @@ function init(server) {
 
       // Health Endpoint
       app.get(providerHealth.endPoint, providerHealth.health);
-
-      // Endpoint for Update OR Create a Trigger
-      app.put(providerUpdate.endPoint, providerUtils.authorize, providerUpdate.update);
 
       // Endpoint for Creating a new Trigger
       app.post(providerCreate.endPoint, providerUtils.authorize, providerCreate.create);

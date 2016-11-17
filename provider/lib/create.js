@@ -13,9 +13,15 @@ module.exports = function (tid, logger, utils) {
     var newTrigger = req.body;
 
     // early exits
-    if (!newTrigger.namespace) return utils.sendError(method, 400, 'no namespace provided', res);
-    if (!newTrigger.name) return utils.sendError(method, 400, 'no name provided', res);
-    if (!newTrigger.cron) return utils.sendError(method, 400, 'no cron provided', res);
+    if (!newTrigger.namespace) {
+        return utils.sendError(method, 400, 'no namespace provided', res);
+    }
+    if (!newTrigger.name) {
+        return utils.sendError(method, 400, 'no name provided', res);
+    }
+    if (!newTrigger.cron) {
+        return utils.sendError(method, 400, 'no cron provided', res);
+    }
 
     // if the trigger creation request has not set the max trigger fire limit
     // we will set it here (default value can be updated in ./constants.js)
@@ -29,8 +35,12 @@ module.exports = function (tid, logger, utils) {
     	utils.logger.info(tid, method, 'maxTriggers = -1, setting maximum trigger fire count to infinity');
     }
 
-    if (!req.user.uuid) return utils.sendError(method, 400, 'no user uuid was detected', res);
-    if (!req.user.key) return utils.sendError(method, 400, 'no user key was detected', res);
+    if (!req.user.uuid) {
+        return utils.sendError(method, 400, 'no user uuid was detected', res);
+    }
+    if (!req.user.key) {
+        return utils.sendError(method, 400, 'no user key was detected', res);
+    }
     newTrigger.apikey = req.user.uuid + ':' + req.user.key;
 
     try {

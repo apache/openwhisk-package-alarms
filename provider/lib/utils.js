@@ -1,7 +1,6 @@
 var _ = require('lodash');
 var request = require('request');
 var CronJob = require('cron').CronJob;
-var Agent = require('agentkeepalive');
 var constants = require('./constants.js');
 
 module.exports = function(
@@ -20,7 +19,7 @@ module.exports = function(
     this.triggerDB = triggerDB;
     this.routerHost = routerHost;
 
-    this.logger.info (tid, 'utils', 'recieved database to store triggers: ' + triggerDB);
+    this.logger.info (tid, 'utils', 'received database to store triggers: ' + triggerDB);
 
     // this is the default trigger fire limit (in the event that is was not set during trigger creation)
     this.defaultTriggerFireLimit = constants.DEFAULT_TRIGGER_COUNT;
