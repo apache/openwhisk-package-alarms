@@ -2,6 +2,7 @@ var _ = require('lodash');
 var request = require('request');
 var CronJob = require('cron').CronJob;
 var Agent = require('agentkeepalive');
+var constants = require('./constants.js');
 
 module.exports = function(
   tid,
@@ -9,7 +10,6 @@ module.exports = function(
   app,
   retriesBeforeDelete,
   triggerDB,
-  triggersLimit,
   routerHost
 ) {
 
@@ -18,8 +18,12 @@ module.exports = function(
     this.app = app;
     this.retriesBeforeDelete = retriesBeforeDelete;
     this.triggerDB = triggerDB;
-    this.triggersLimit = triggersLimit;
     this.routerHost = routerHost;
+
+    this.logger.info (tid, 'utils', 'recieved database to store triggers: ' + triggerDB);
+
+    // this is the default trigger fire limit (in the event that is was not set during trigger creation)
+    this.defaultTriggerFireLimit = constants.DEFAULT_TRIGGER_COUNT;
 
     // Log HTTP Requests
     app.use(function(req, res, next) {
@@ -39,16 +43,22 @@ module.exports = function(
         var method = 'createTrigger';
 
         var triggerIdentifier = that.getTriggerIdentifier(newTrigger.apikey, newTrigger.namespace, newTrigger.name);
-        var cronHandle = new CronJob(newTrigger.cron,
-            function onTick() {
-                var triggerHandle = that.triggers[triggerIdentifier];
-                if(triggerHandle && triggerHandle.triggersLeft > 0 && triggerHandle.retriesLeft > 0) {
-                    that.fireTrigger(newTrigger.namespace, newTrigger.name, newTrigger.payload, newTrigger.apikey);
-                }
-            }
-        );
-        cronHandle.start();
-        logger.info(tid, method, triggerIdentifier, 'created successfully');
+
+        // to avoid multiple cron jobs for the same trigger we will only create a cron job if 
+        // the trigger is not already in the list of identified triggers
+        if (!(triggerIdentifier in that.triggers)) {
+            var cronHandle = new CronJob(newTrigger.cron,
+                    function onTick() {
+                        var triggerHandle = that.triggers[triggerIdentifier];
+                        if(triggerHandle && triggerHandle.triggersLeft > 0 && triggerHandle.retriesLeft > 0) {
+                            that.fireTrigger(newTrigger.namespace, newTrigger.name, newTrigger.payload, newTrigger.apikey);
+                        }
+                    }
+                );
+                cronHandle.start();
+                logger.info(tid, method, triggerIdentifier, 'created successfully');
+        }
+
         that.triggers[triggerIdentifier] = {
             cron: newTrigger.cron,
             cronHandle: cronHandle,
@@ -58,6 +68,7 @@ module.exports = function(
             name: newTrigger.name,
             namespace: newTrigger.namespace
         };
+
     };
 
     this.fireTrigger = function (namespace, name, payload, apikey) {
@@ -65,10 +76,24 @@ module.exports = function(
         var triggerIdentifier = that.getTriggerIdentifier(apikey, namespace, name);
         var routerHost = process.env.ROUTER_HOST;
         var host = "https://" + routerHost + ":443";
+        // https://github.com/openwhisk/openwhisk-alarms-trigger/issues/9
+        // resolved this in create.js by validating apikey and failing with a useful message if it is
+        // not present
         var keyParts = apikey.split(':');
+
         var triggerHandle = that.triggers[triggerIdentifier];
 
-        triggerHandle.triggersLeft--;
+        // we need a way of know if the triggers should fire without max fire constraint (ie fire infinite times)
+        var unlimitedTriggerFires = false;
+        if (triggerHandle.triggersLeft === -1) {
+        	unlimitedTriggerFires = true;
+        }
+
+        // we only decrement the number of triggers left if the max trigger fires count is not set to infinity
+        // (triggersLeft = -1 implies max trigger fires is set to infinity)
+        if (!unlimitedTriggerFires) {
+            triggerHandle.triggersLeft--;
+        }
 
         request({
             method: 'POST',
@@ -82,12 +107,21 @@ module.exports = function(
             if(triggerHandle) {
                 if(err || res.statusCode >= 400) {
                     triggerHandle.retriesLeft--;
-                    triggerHandle.triggersLeft++; // setting the counter back to where it used to be
+
+                    // we only increment trigger counter if the number of triggers is finite
+                    if (!unlimitedTriggerFires) {
+                    	triggerHandle.triggersLeft++; // setting the counter back to where it used to be
+                    }
+
                     logger.warn(tid, method, 'there was an error invoking', triggerIdentifier, err);
                 }
                 else {
                     triggerHandle.retriesLeft = retriesBeforeDelete; // reset retry counter
-                    logger.info(tid, method, 'fired', triggerIdentifier, 'with', payload, triggerHandle.triggersLeft, 'triggers left');
+                    var triggersLeftReport = triggerHandle.triggersLeft;
+                    if (unlimitedTriggerFires) {
+                    	triggersLeftReport = 'INFINITE';
+                    }
+                    logger.info(tid, method, 'fired', triggerIdentifier, 'with', payload, triggersLeftReport, 'triggers left');
                 }
 
                 if(triggerHandle.triggersLeft === 0 || triggerHandle.retriesLeft === 0) {
@@ -163,18 +197,18 @@ module.exports = function(
 
     this.authorize = function(req, res, next) {
       if(!req.headers.authorization) {
-          return sendError(400, 'Malformed request, authentication header expected', res);
+          return that.sendError(400, 'Malformed request, authentication header expected', res);
       }
 
       var parts = req.headers.authorization.split(' ');
       if (parts[0].toLowerCase() !== 'basic' || !parts[1]) {
-          return sendError(400, 'Malformed request, basic authentication expected', res);
+          return that.sendError(400, 'Malformed request, basic authentication expected', res);
       }
 
       var auth = new Buffer(parts[1], 'base64').toString();
       auth = auth.match(/^([^:]*):(.*)$/);
       if (!auth) {
-          return sendError(400, 'Malformed request, authentication invalid', res);
+          return that.sendError(400, 'Malformed request, authentication invalid', res);
       }
 
       req.user = {

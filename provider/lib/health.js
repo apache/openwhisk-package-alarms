@@ -7,5 +7,5 @@ module.exports = function(tid, logger, providerUtils) {
   this.health = function (req, res) {
       res.send({triggerCount: Object.keys(providerUtils.triggers).length});
   };
-  
+
 };
