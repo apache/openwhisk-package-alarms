@@ -19,6 +19,11 @@ function main(msg){
             msg.trigger_payload = {payload: msg.trigger_payload};
         }
 
+        // if the max triggers has not been set we will set it to infinity here
+        if (!msg.maxTriggers) {
+        	msg.maxTriggers = '-1';
+        }
+
         var newTrigger = {
             name: trigger.name,
             namespace: trigger.namespace,
