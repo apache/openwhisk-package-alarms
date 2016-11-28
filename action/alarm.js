@@ -44,11 +44,11 @@ function main(msg){
             else {
                 if(res) {
                     console.log('alarm: Error invoking whisk action:', res.statusCode, body);
-                    reject(body.error);
+                    reject(body);
                 }
                 else {
                     console.log('alarm: Error invoking whisk action:', err);
-                    reject();
+                    reject(err);
                 }
             }
         });
@@ -75,12 +75,11 @@ function main(msg){
               else {
                   if(res) {
                       console.log('alarm: Error invoking whisk action:', res.statusCode, body);
-                      reject(body.error);
-                      reject(body.error);
+                      reject(body);
                   }
                   else {
                       console.log('alarm: Error invoking whisk action:', err);
-                      reject();
+                      reject(err);
                   }
               }
           });

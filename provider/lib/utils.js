@@ -195,27 +195,27 @@ module.exports = function(
     };
 
     this.authorize = function(req, res, next) {
-      if(!req.headers.authorization) {
-          return that.sendError(400, 'Malformed request, authentication header expected', res);
-      }
+        if(!req.headers.authorization) {
+            return that.sendError(400, 'Malformed request, authentication header expected', res);
+        }
 
-      var parts = req.headers.authorization.split(' ');
-      if (parts[0].toLowerCase() !== 'basic' || !parts[1]) {
-          return that.sendError(400, 'Malformed request, basic authentication expected', res);
-      }
+        var parts = req.headers.authorization.split(' ');
+        if (parts[0].toLowerCase() !== 'basic' || !parts[1]) {
+            return that.sendError(400, 'Malformed request, basic authentication expected', res);
+        }
 
-      var auth = new Buffer(parts[1], 'base64').toString();
-      auth = auth.match(/^([^:]*):(.*)$/);
-      if (!auth) {
-          return that.sendError(400, 'Malformed request, authentication invalid', res);
-      }
+        var auth = new Buffer(parts[1], 'base64').toString();
+        auth = auth.match(/^([^:]*):(.*)$/);
+        if (!auth) {
+            return that.sendError(400, 'Malformed request, authentication invalid', res);
+        }
 
-      req.user = {
-          uuid: auth[1],
-          key: auth[2]
-      };
+        req.user = {
+            uuid: auth[1],
+            key: auth[2]
+        };
 
-      next();
+        next();
     };
 
 };
