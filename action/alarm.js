@@ -24,7 +24,7 @@ function main(msg){
             namespace: trigger.namespace,
             cron: msg.cron,
             payload: msg.trigger_payload || {},
-            maxTriggers: msg.maxTriggers || 1000
+            maxTriggers: msg.maxTriggers
         };
 
         request({
@@ -75,6 +75,7 @@ function main(msg){
               else {
                   if(res) {
                       console.log('alarm: Error invoking whisk action:', res.statusCode, body);
+                      reject(body.error);
                       reject(body.error);
                   }
                   else {
