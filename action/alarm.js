@@ -24,7 +24,7 @@ function main(msg){
             namespace: trigger.namespace,
             cron: msg.cron,
             payload: msg.trigger_payload || {},
-            maxTriggers: msg.maxTriggers || 1000000
+            maxTriggers: msg.maxTriggers
         };
 
         request({
