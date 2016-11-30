@@ -49,7 +49,7 @@ $WSK_CLI -i --apihost "$APIHOST" package update --auth "$AUTH"  --shared yes ala
      -p cron '' \
      -p trigger_payload ''
 
-$WSK_CLI -i --apihost "$APIHOST" action update --auth "$AUTH" --shared yes alarms/alarm "$PACKAGE_HOME/action/alarm.js" \
+$WSK_CLI -i --apihost "$APIHOST" action update --auth "$AUTH" alarms/alarm "$PACKAGE_HOME/action/alarm.js" \
      -a description 'Fire trigger when alarm occurs' \
      -a feed true
 
