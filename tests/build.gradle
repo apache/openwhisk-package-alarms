@@ -49,6 +49,8 @@ dependencies {
     testCompile 'com.google.code.tempus-fugit:tempus-fugit:1.2-SNAPSHOT'
     testCompile 'com.google.code.gson:gson:2.3.1'
     testCompile 'com.cloudant:cloudant-client:1.0.1'
+
+    testCompile project(':common:scala')
     testCompile project(':WhiskTest').sourceSets.test.output
 }
 
