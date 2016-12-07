@@ -58,6 +58,10 @@ tasks.withType(ScalaCompile) {
     scalaCompileOptions.additionalParameters = gradle.scala.compileFlags
 }
 
+task testHealth(type: Test) {
+    include 'system/packages/**'
+}
+
 def keystorePath = new File(buildDir, 'classes/test/keystore')
 task deleteKeystore(type: Delete) {
     delete keystorePath
