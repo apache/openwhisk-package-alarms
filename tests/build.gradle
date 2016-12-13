@@ -59,6 +59,7 @@ tasks.withType(ScalaCompile) {
 }
 
 task testHealth(type: Test) {
+    systemProperty 'test.router', 'true'
     include 'system/packages/**'
 }
 
