@@ -95,7 +95,7 @@ function init(server) {
     ///
     var nanoDb = createTriggerDb();
     if (nanoDb === null) {
-    	logger.error(tid, 'init', 'found an error creating database: ', err);
+    	logger.error(tid, 'init', 'an error occurred creating database');
     } else {
 
       logger.info(tid, 'init', 'trigger storage database details: ', nanoDb);

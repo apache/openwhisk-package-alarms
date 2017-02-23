@@ -42,11 +42,11 @@ module.exports = function(
         var method = 'createTrigger';
 
         var triggerIdentifier = that.getTriggerIdentifier(newTrigger.apikey, newTrigger.namespace, newTrigger.name);
-
+        var cronHandle;
         // to avoid multiple cron jobs for the same trigger we will only create a cron job if
         // the trigger is not already in the list of identified triggers
         if (!(triggerIdentifier in that.triggers)) {
-            var cronHandle = new CronJob(newTrigger.cron,
+            cronHandle = new CronJob(newTrigger.cron,
                     function onTick() {
                         var triggerHandle = that.triggers[triggerIdentifier];
                         if(triggerHandle && triggerHandle.triggersLeft > 0 && triggerHandle.retriesLeft > 0) {

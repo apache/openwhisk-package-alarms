@@ -7,7 +7,10 @@ SCRIPTDIR=$(cd $(dirname "$0") && pwd)
 ROOTDIR="$SCRIPTDIR/../.."
 WHISKDIR="$ROOTDIR/../openwhisk"
 
-# Install OpenWhisk
-
+# run scancode
 cd $WHISKDIR
 tools/build/scanCode.py $ROOTDIR
+
+# run jshint
+cd $ROOTDIR
+jshint --exclude tests .
