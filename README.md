@@ -1,5 +1,4 @@
-
-## Using the Alarm package
+# Using the Alarm package
 
 The `/whisk.system/alarms` package can be used to fire a trigger at a specified frequency. This is useful for setting up recurring jobs or tasks, such as invoking a system backup action every hour.
 
@@ -11,7 +10,7 @@ The package includes the following feed.
 | `/whisk.system/alarms/alarm` | feed | cron, trigger_payload, maxTriggers | Fire trigger event periodically |
 
 
-### Firing a trigger event periodically
+## Firing a trigger event periodically
 
 The `/whisk.system/alarms/alarm` feed configures the Alarm service to fire a trigger event at a specified frequency. The parameters are as follows:
 
@@ -30,7 +29,10 @@ For more details about using cron syntax, see: http://crontab.org. Following are
 The following is an example of creating a trigger that will be fired once every 2 minutes with `name` and `place` values in the trigger event.
 
   ```
-  $ wsk trigger create periodic --feed /whisk.system/alarms/alarm --param cron "*/2 * * * *" --param trigger_payload "{\"name\":\"Odin\",\"place\":\"Asgard\"}"
+  wsk trigger create periodic \
+    --feed /whisk.system/alarms/alarm \
+    --param cron "*/2 * * * *" \
+    --param trigger_payload "{\"name\":\"Odin\",\"place\":\"Asgard\"}"
   ```
 
 Each generated event will include as parameters the properties specified in the `trigger_payload` value. In this case, each trigger event will have parameters `name=Odin` and `place=Asgard`.
