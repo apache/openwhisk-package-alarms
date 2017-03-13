@@ -103,8 +103,8 @@ module.exports = function(
                 pass: keyParts[1]
             }
         }, function(err, res) {
-            if(triggerHandle) {
-                if(err || res.statusCode >= 400) {
+            if (triggerHandle) {
+                if (err || res.statusCode >= 400) {
                     triggerHandle.retriesLeft--;
 
                     // we only increment trigger counter if the number of triggers is finite
@@ -123,11 +123,11 @@ module.exports = function(
                     logger.info(tid, method, 'fired', triggerIdentifier, 'with', payload, triggersLeftReport, 'triggers left');
                 }
 
-                if(triggerHandle.triggersLeft === 0 || triggerHandle.retriesLeft === 0) {
-                    if(triggerHandle.triggersLeft === 0) {
+                if (triggerHandle.triggersLeft === 0 || triggerHandle.retriesLeft === 0) {
+                    if (triggerHandle.triggersLeft === 0) {
                         logger.info(tid, 'onTick', 'no more triggers left, deleting');
                     }
-                    if(triggerHandle.retriesLeft === 0) {
+                    if (triggerHandle.retriesLeft === 0) {
                         logger.info(tid, 'onTick', 'too many retries, deleting');
                     }
                     that.deleteTrigger(triggerHandle.namespace, triggerHandle.name, triggerHandle.apikey);
@@ -144,30 +144,40 @@ module.exports = function(
         var method = 'deleteTrigger';
 
         var triggerIdentifier = that.getTriggerIdentifier(apikey, namespace, name);
-        if(that.triggers[triggerIdentifier]) {
+        if (that.triggers[triggerIdentifier]) {
             that.triggers[triggerIdentifier].cronHandle.stop();
             delete that.triggers[triggerIdentifier];
 
             logger.info(tid, method, 'trigger', triggerIdentifier, 'successfully deleted');
 
-            that.triggerDB.get(triggerIdentifier, function(err, body) {
-                if(!err) {
-                    that.triggerDB.destroy(body._id, body._rev, function(err) {
-                        if(err) {
-                            logger.error(tid, method, 'there was an error while deleting', triggerIdentifier, 'from database');
-                        }
-                    });
-                }
-                else {
-                    logger.error(tid, method, 'there was an error while deleting', triggerIdentifier, 'from database');
-                }
-            });
+            that.deleteTriggerFromDB(triggerIdentifier);
             return true;
         }
         else {
             logger.info(tid, method, 'trigger', triggerIdentifier, 'could not be found');
             return false;
         }
+    };
+
+    this.deleteTriggerFromDB = function (triggerIdentifier) {
+
+        var method = 'deleteTriggerFromDB';
+
+        that.triggerDB.get(triggerIdentifier, function (err, body) {
+            if (!err) {
+                that.triggerDB.destroy(body._id, body._rev, function (err) {
+                    if (err) {
+                        logger.error(tid, method, 'there was an error while deleting', triggerIdentifier, 'from database');
+                    }
+                    else {
+                        logger.info(tid, method, 'trigger', triggerIdentifier, 'successfully deleted from database');
+                    }
+                });
+            }
+            else {
+                logger.error(tid, method, 'there was an error while deleting', triggerIdentifier, 'from database');
+            }
+        });
     };
 
     this.getTriggerIdentifier = function (apikey, namespace, name) {
@@ -178,9 +188,36 @@ module.exports = function(
         var method = 'initAllTriggers';
         logger.info(tid, method, 'resetting system from last state');
         that.triggerDB.list({include_docs: true}, function(err, body) {
-            if(!err) {
+            if (!err) {
                 body.rows.forEach(function(trigger) {
-                    that.createTrigger(trigger.doc);
+                    //check if trigger still exists in whisk db
+                    var namespace = trigger.doc.namespace;
+                    var name = trigger.doc.name;
+                    var apikey = trigger.doc.apikey;
+                    var triggerIdentifier = that.getTriggerIdentifier(apikey, namespace, name);
+                    logger.info(tid, method, 'Checking if trigger', triggerIdentifier, 'still exists');
+
+                    var host = 'https://' + routerHost +':'+ 443;
+                    var triggerURL = host + '/api/v1/namespaces/' + namespace + '/triggers/' + name;
+                    var auth = apikey.split(':');
+
+                    request({
+                        method: 'get',
+                        url: triggerURL,
+                        auth: {
+                            user: auth[0],
+                            pass: auth[1]
+                        }
+                    }, function(error, response, body) {
+                        //delete from database if trigger no longer exists (404)
+                        if (!error && response.statusCode === 404) {
+                            logger.info(tid, method, 'trigger', triggerIdentifier, 'could not be found');
+                            that.deleteTriggerFromDB(triggerIdentifier);
+                        }
+                        else {
+                            that.createTrigger(trigger.doc);
+                        }
+                    });
                 });
             }
             else {
@@ -195,7 +232,7 @@ module.exports = function(
     };
 
     this.authorize = function(req, res, next) {
-        if(!req.headers.authorization) {
+        if (!req.headers.authorization) {
             return that.sendError(400, 'Malformed request, authentication header expected', res);
         }
 
