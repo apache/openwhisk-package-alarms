@@ -47,15 +47,15 @@ module.exports = function(
         // the trigger is not already in the list of identified triggers
         if (!(triggerIdentifier in that.triggers)) {
             cronHandle = new CronJob(newTrigger.cron,
-                    function onTick() {
-                        var triggerHandle = that.triggers[triggerIdentifier];
-                        if(triggerHandle && triggerHandle.triggersLeft > 0 && triggerHandle.retriesLeft > 0) {
-                            that.fireTrigger(newTrigger.namespace, newTrigger.name, newTrigger.payload, newTrigger.apikey);
-                        }
+                function onTick() {
+                    var triggerHandle = that.triggers[triggerIdentifier];
+                    if (triggerHandle && triggerHandle.triggersLeft > 0 && triggerHandle.retriesLeft > 0) {
+                        that.fireTrigger(newTrigger.namespace, newTrigger.name, newTrigger.payload, newTrigger.apikey);
                     }
-                );
-                cronHandle.start();
-                logger.info(tid, method, triggerIdentifier, 'created successfully');
+                }
+            );
+            cronHandle.start();
+            logger.info(tid, method, triggerIdentifier, 'created successfully');
         }
 
         that.triggers[triggerIdentifier] = {
@@ -187,7 +187,7 @@ module.exports = function(
     this.initAllTriggers = function () {
         var method = 'initAllTriggers';
         logger.info(tid, method, 'resetting system from last state');
-        that.triggerDB.list({include_docs: true}, function(err, body) {
+        that.triggerDB.view('filters', 'only_triggers', {include_docs: true}, function(err, body) {
             if (!err) {
                 body.rows.forEach(function(trigger) {
                     //check if trigger still exists in whisk db
