@@ -4,7 +4,6 @@ var CronJob = require('cron').CronJob;
 var constants = require('./constants.js');
 
 module.exports = function(
-  tid,
   logger,
   app,
   retriesBeforeDelete,
@@ -12,14 +11,11 @@ module.exports = function(
   routerHost
 ) {
 
-    this.tid = tid;
     this.logger = logger;
     this.app = app;
     this.retriesBeforeDelete = retriesBeforeDelete;
     this.triggerDB = triggerDB;
     this.routerHost = routerHost;
-
-    this.logger.info (tid, 'utils', 'received database to store triggers: ' + triggerDB);
 
     // this is the default trigger fire limit (in the event that is was not set during trigger creation)
     this.defaultTriggerFireLimit = constants.DEFAULT_TRIGGER_COUNT;
@@ -27,7 +23,7 @@ module.exports = function(
     // Log HTTP Requests
     app.use(function(req, res, next) {
         if (req.url.indexOf('/alarmtriggers') === 0) {
-            logger.info(tid, 'HttpRequest', req.method, req.url);
+            logger.info('HttpRequest', req.method, req.url);
         }
         next();
     });
@@ -37,7 +33,7 @@ module.exports = function(
 
     var that = this;
 
-    this.createTrigger = function (newTrigger) {
+    this.createTrigger = function(newTrigger) {
 
         var method = 'createTrigger';
 
@@ -49,20 +45,20 @@ module.exports = function(
             cronHandle = new CronJob(newTrigger.cron,
                 function onTick() {
                     var triggerHandle = that.triggers[triggerIdentifier];
-                    if (triggerHandle && triggerHandle.triggersLeft > 0 && triggerHandle.retriesLeft > 0) {
+                    if (triggerHandle && (triggerHandle.maxTriggers === -1 || triggerHandle.triggersLeft > 0)) {
                         that.fireTrigger(newTrigger.namespace, newTrigger.name, newTrigger.payload, newTrigger.apikey);
                     }
                 }
             );
             cronHandle.start();
-            logger.info(tid, method, triggerIdentifier, 'created successfully');
+            logger.info(method, triggerIdentifier, 'created successfully');
         }
 
         that.triggers[triggerIdentifier] = {
             cron: newTrigger.cron,
             cronHandle: cronHandle,
             triggersLeft: newTrigger.maxTriggers,
-            retriesLeft: retriesBeforeDelete,
+            maxTriggers: newTrigger.maxTriggers,
             apikey: newTrigger.apikey,
             name: newTrigger.name,
             namespace: newTrigger.namespace
@@ -79,20 +75,7 @@ module.exports = function(
         // resolved this in create.js by validating apikey and failing with a useful message if it is
         // not present
         var keyParts = apikey.split(':');
-
         var triggerHandle = that.triggers[triggerIdentifier];
-
-        // we need a way of know if the triggers should fire without max fire constraint (ie fire infinite times)
-        var unlimitedTriggerFires = false;
-        if (triggerHandle.triggersLeft === -1) {
-        	unlimitedTriggerFires = true;
-        }
-
-        // we only decrement the number of triggers left if the max trigger fires count is not set to infinity
-        // (triggersLeft = -1 implies max trigger fires is set to infinity)
-        if (!unlimitedTriggerFires) {
-            triggerHandle.triggersLeft--;
-        }
 
         request({
             method: 'POST',
@@ -102,39 +85,30 @@ module.exports = function(
                 user: keyParts[0],
                 pass: keyParts[1]
             }
-        }, function(err, res) {
+        }, function(err, res, body) {
             if (triggerHandle) {
+                logger.info(method, 'done http request, STATUS', res ? res.statusCode : res);
                 if (err || res.statusCode >= 400) {
-                    triggerHandle.retriesLeft--;
-
-                    // we only increment trigger counter if the number of triggers is finite
-                    if (!unlimitedTriggerFires) {
-                    	triggerHandle.triggersLeft++; // setting the counter back to where it used to be
+                    logger.error(method, 'there was an error invoking', triggerIdentifier, res ? res.statusCode : res, err, body);
+                    if (!err && [408, 429, 500, 503].indexOf(res.statusCode) === -1) {
+                        //delete dead triggers
+                        that.deleteTrigger(triggerHandle.namespace, triggerHandle.name, triggerHandle.apikey);
                     }
-
-                    logger.warn(tid, method, 'there was an error invoking', triggerIdentifier, err);
-                }
-                else {
-                    triggerHandle.retriesLeft = retriesBeforeDelete; // reset retry counter
-                    var triggersLeftReport = triggerHandle.triggersLeft;
-                    if (unlimitedTriggerFires) {
-                    	triggersLeftReport = 'INFINITE';
+                } else {
+                    // only manage trigger fires if they are not infinite
+                    if (triggerHandle.maxTriggers !== -1) {
+                        triggerHandle.triggersLeft--;
                     }
-                    logger.info(tid, method, 'fired', triggerIdentifier, 'with', payload, triggersLeftReport, 'triggers left');
+                    logger.info(method, 'fired', triggerIdentifier, 'with body', body, triggerHandle.triggersLeft, 'triggers left');
                 }
 
-                if (triggerHandle.triggersLeft === 0 || triggerHandle.retriesLeft === 0) {
-                    if (triggerHandle.triggersLeft === 0) {
-                        logger.info(tid, 'onTick', 'no more triggers left, deleting');
-                    }
-                    if (triggerHandle.retriesLeft === 0) {
-                        logger.info(tid, 'onTick', 'too many retries, deleting');
-                    }
+                if (triggerHandle.triggersLeft === 0) {
+                    logger.info('onTick', 'no more triggers left, deleting');
                     that.deleteTrigger(triggerHandle.namespace, triggerHandle.name, triggerHandle.apikey);
                 }
             }
             else {
-                logger.info(tid, method, 'trigger', triggerIdentifier, 'was deleted between invocations');
+                logger.info(method, 'trigger', triggerIdentifier, 'was deleted between invocations');
             }
         });
     };
@@ -148,13 +122,13 @@ module.exports = function(
             that.triggers[triggerIdentifier].cronHandle.stop();
             delete that.triggers[triggerIdentifier];
 
-            logger.info(tid, method, 'trigger', triggerIdentifier, 'successfully deleted');
+            logger.info(method, 'trigger', triggerIdentifier, 'successfully deleted');
 
             that.deleteTriggerFromDB(triggerIdentifier);
             return true;
         }
         else {
-            logger.info(tid, method, 'trigger', triggerIdentifier, 'could not be found');
+            logger.info(method, 'trigger', triggerIdentifier, 'could not be found');
             return false;
         }
     };
@@ -167,15 +141,15 @@ module.exports = function(
             if (!err) {
                 that.triggerDB.destroy(body._id, body._rev, function (err) {
                     if (err) {
-                        logger.error(tid, method, 'there was an error while deleting', triggerIdentifier, 'from database');
+                        logger.error(method, 'there was an error while deleting', triggerIdentifier, 'from database');
                     }
                     else {
-                        logger.info(tid, method, 'trigger', triggerIdentifier, 'successfully deleted from database');
+                        logger.info(method, 'trigger', triggerIdentifier, 'successfully deleted from database');
                     }
                 });
             }
             else {
-                logger.error(tid, method, 'there was an error while deleting', triggerIdentifier, 'from database');
+                logger.error(method, 'there was an error while deleting', triggerIdentifier, 'from database');
             }
         });
     };
@@ -186,7 +160,7 @@ module.exports = function(
 
     this.initAllTriggers = function () {
         var method = 'initAllTriggers';
-        logger.info(tid, method, 'resetting system from last state');
+        logger.info(method, 'resetting system from last state');
         that.triggerDB.view('filters', 'only_triggers', {include_docs: true}, function(err, body) {
             if (!err) {
                 body.rows.forEach(function(trigger) {
@@ -195,7 +169,7 @@ module.exports = function(
                     var name = trigger.doc.name;
                     var apikey = trigger.doc.apikey;
                     var triggerIdentifier = that.getTriggerIdentifier(apikey, namespace, name);
-                    logger.info(tid, method, 'Checking if trigger', triggerIdentifier, 'still exists');
+                    logger.info(method, 'Checking if trigger', triggerIdentifier, 'still exists');
 
                     var host = 'https://' + routerHost +':'+ 443;
                     var triggerURL = host + '/api/v1/namespaces/' + namespace + '/triggers/' + name;
@@ -211,7 +185,7 @@ module.exports = function(
                     }, function(error, response, body) {
                         //delete from database if trigger no longer exists (404)
                         if (!error && response.statusCode === 404) {
-                            logger.info(tid, method, 'trigger', triggerIdentifier, 'could not be found');
+                            logger.info(method, 'trigger', triggerIdentifier, 'could not be found');
                             that.deleteTriggerFromDB(triggerIdentifier);
                         }
                         else {
@@ -221,13 +195,13 @@ module.exports = function(
                 });
             }
             else {
-                logger.error(tid, method, 'could not get latest state from database');
+                logger.error(method, 'could not get latest state from database');
             }
         });
     };
 
     this.sendError = function (method, code, message, res) {
-        logger.warn(tid, method, message);
+        logger.warn(method, message);
         res.status(code).json({error: message});
     };
 

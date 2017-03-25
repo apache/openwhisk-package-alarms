@@ -1,4 +1,4 @@
-module.exports = function(tid, logger, providerUtils) {
+module.exports = function(logger, providerUtils) {
 
   // Health Endpoint
   this.endPoint = '/health';

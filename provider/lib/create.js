@@ -1,6 +1,6 @@
 var request = require('request');
 
-module.exports = function (tid, logger, utils) {
+module.exports = function (logger, utils) {
 
     // Test Endpoint
     this.endPoint = '/triggers';
@@ -10,7 +10,7 @@ module.exports = function (tid, logger, utils) {
 
         var method = 'POST /triggers';
 
-        utils.logger.info(tid, method, 'Got trigger', req.body);
+        utils.logger.info(method, 'Got trigger', req.body);
 
         var newTrigger = req.body;
 
@@ -31,12 +31,6 @@ module.exports = function (tid, logger, utils) {
             newTrigger.maxTriggers = utils.defaultTriggerFireLimit;
         }
 
-        // if the user has set the trigger limit to -1 we will not enforce any limits on the number of times that a trigger
-        // is fired
-        if (newTrigger.maxTriggers === -1) {
-    	    utils.logger.info(tid, method, 'maxTriggers = -1, setting maximum trigger fire count to infinity');
-        }
-
         if (!req.user.uuid) {
             return utils.sendError(method, 400, 'no user uuid was detected', res);
         }
@@ -49,7 +43,7 @@ module.exports = function (tid, logger, utils) {
         var host = 'https://' + utils.routerHost +':'+ 443;
         var triggerURL = host + '/api/v1/namespaces/' + newTrigger.namespace + '/triggers/' + newTrigger.name;
 
-        logger.info(tid, method, 'Checking if user has access rights to create a trigger');
+        logger.info(method, 'Checking if user has access rights to create a trigger');
         request({
             method: 'get',
             url: triggerURL,
@@ -60,7 +54,7 @@ module.exports = function (tid, logger, utils) {
         }, function(error, response, body) {
             if (error || response.statusCode >= 400) {
                 var errorMsg = 'Trigger authentication request failed.';
-                logger.error(tid, method, errorMsg, error);
+                logger.error(method, errorMsg, error);
                 if (error) {
                     res.status(400).json({
                         message: errorMsg,
@@ -80,7 +74,7 @@ module.exports = function (tid, logger, utils) {
                     utils.createTrigger(newTrigger);
                 }
                 catch (e) {
-                    logger.error(tid, method, e);
+                    logger.error(method, e);
                     return utils.sendError(method, 400, 'error creating alarm trigger', res);
                 }
 
