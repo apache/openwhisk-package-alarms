@@ -12,7 +12,7 @@ var logger = new winston.Logger({
             },
             formatter: function(options) {
                 // Return string will be passed to logger.
-                return '[' + options.timestamp() +'] ['+ options.level.toUpperCase() +'] '+  options.message;
+                return '[' + options.timestamp() +'] ['+ options.level.toUpperCase() +'] [??] [alarmsTrigger] ' +  options.message;
             }
         })
     ],
@@ -25,7 +25,7 @@ var logger = new winston.Logger({
 
 function getMessage(argsObject) {
     var args = Array.prototype.slice.call(argsObject);
-    args.splice(0, 2);
+    args.shift();
     args.forEach(function(arg, i) {
         if (_.isObject(args[i])) {
             args[i] = JSON.stringify(args[i]);
@@ -34,18 +34,18 @@ function getMessage(argsObject) {
     return args.join(' ');
 }
 
-// FORMAT: s"[$time] [$category] [$id] [$componentName] $message"
+// FORMAT: s"[$time] [$category] [$id] [$componentName] [$name] $message"
 module.exports = {
-    info: function(tid, name) {
-        logger.info('['+tid+']', '['+name+']', getMessage(arguments));
+    info: function(name) {
+        logger.info('['+name+']', getMessage(arguments));
     },
-    warn: function(tid, name) {
-        logger.warn('['+tid+']', '['+name+']', getMessage(arguments));
+    warn: function(name) {
+        logger.warn('['+name+']', getMessage(arguments));
     },
-    error: function(tid, name) {
-        logger.error('['+tid+']', '['+name+']', getMessage(arguments));
+    error: function(name) {
+        logger.error('['+name+']', getMessage(arguments));
     },
-    debug: function(tid, name) {
-        logger.debug('['+tid+']', '['+name+']', getMessage(arguments));
+    debug: function(name) {
+        logger.debug('['+name+']', getMessage(arguments));
     }
 };

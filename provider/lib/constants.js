@@ -1,6 +1,6 @@
 const TRIGGER_DB_SUFFIX = 'alarmservice';
 const DEFAULT_TRIGGER_COUNT = 1000000;
-const RETRIES_BEFORE_DELETE = 5;
+const RETRIES_BEFORE_DELETE = 10;
 
 module.exports = {
     TRIGGER_DB_SUFFIX: TRIGGER_DB_SUFFIX,

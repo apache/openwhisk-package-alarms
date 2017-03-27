@@ -1,6 +1,6 @@
 var request = require('request');
 
-module.exports = function(tid, logger, utils) {
+module.exports = function(logger, utils) {
 
     // Test Endpoint
     this.endPoint = '/triggers/:namespace/:name';
@@ -34,7 +34,7 @@ module.exports = function(tid, logger, utils) {
             }
             else {
                 var errorMsg = 'Trigger ' + req.params.name  + ' cannot be deleted.';
-                logger.error(tid, method, errorMsg, error);
+                logger.error(method, errorMsg, error);
                 if (error) {
                     res.status(400).json({
                         message: errorMsg,
