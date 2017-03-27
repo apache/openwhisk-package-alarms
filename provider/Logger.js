@@ -1,6 +1,7 @@
 var _ = require('lodash');
 var moment = require('moment');
 var winston = require('winston');
+var safeStringify = require('json-stringify-safe');
 
 var emailRegex = /(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))/g;
 
@@ -28,7 +29,7 @@ function getMessage(argsObject) {
     args.shift();
     args.forEach(function(arg, i) {
         if (_.isObject(args[i])) {
-            args[i] = JSON.stringify(args[i]);
+            args[i] = safeStringify(args[i]);
         }
     });
     return args.join(' ');
