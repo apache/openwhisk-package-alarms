@@ -37,33 +37,46 @@ module.exports = function(
 
         var method = 'createTrigger';
 
-        var triggerIdentifier = that.getTriggerIdentifier(newTrigger.apikey, newTrigger.namespace, newTrigger.name);
-        var cronHandle;
-        // to avoid multiple cron jobs for the same trigger we will only create a cron job if
-        // the trigger is not already in the list of identified triggers
-        if (!(triggerIdentifier in that.triggers)) {
-            cronHandle = new CronJob(newTrigger.cron,
-                function onTick() {
-                    var triggerHandle = that.triggers[triggerIdentifier];
-                    if (triggerHandle && (triggerHandle.maxTriggers === -1 || triggerHandle.triggersLeft > 0)) {
-                        that.fireTrigger(newTrigger.namespace, newTrigger.name, newTrigger.payload, newTrigger.apikey);
-                    }
+        try {
+            var triggerIdentifier = that.getTriggerIdentifier(newTrigger.apikey, newTrigger.namespace, newTrigger.name);
+            var cronHandle;
+
+            return new Promise(function(resolve, reject) {
+
+                // to avoid multiple cron jobs for the same trigger we will only create a cron job if
+                // the trigger is not already in the list of identified triggers
+                if (!(triggerIdentifier in that.triggers)) {
+                    cronHandle = new CronJob(newTrigger.cron,
+                        function onTick() {
+                            var triggerHandle = that.triggers[triggerIdentifier];
+                            if (triggerHandle && (triggerHandle.maxTriggers === -1 || triggerHandle.triggersLeft > 0)) {
+                                that.fireTrigger(newTrigger.namespace, newTrigger.name, newTrigger.payload, newTrigger.apikey);
+                            }
+                        }
+                    );
+                    logger.info(method, triggerIdentifier, 'starting cron job');
+                    cronHandle.start();
+
+
+                    that.triggers[triggerIdentifier] = {
+                        cron: newTrigger.cron,
+                        cronHandle: cronHandle,
+                        triggersLeft: newTrigger.maxTriggers,
+                        maxTriggers: newTrigger.maxTriggers,
+                        apikey: newTrigger.apikey,
+                        name: newTrigger.name,
+                        namespace: newTrigger.namespace
+                    };
                 }
-            );
-            cronHandle.start();
-            logger.info(method, triggerIdentifier, 'created successfully');
+                else {
+                    logger.info(method, triggerIdentifier, 'already exists');
+                }
+                resolve(triggerIdentifier);
+            });
+
+        } catch (err) {
+            return Promise.reject(err);
         }
-
-        that.triggers[triggerIdentifier] = {
-            cron: newTrigger.cron,
-            cronHandle: cronHandle,
-            triggersLeft: newTrigger.maxTriggers,
-            maxTriggers: newTrigger.maxTriggers,
-            apikey: newTrigger.apikey,
-            name: newTrigger.name,
-            namespace: newTrigger.namespace
-        };
-
     };
 
     this.fireTrigger = function (namespace, name, payload, apikey) {
@@ -119,7 +132,9 @@ module.exports = function(
 
         var triggerIdentifier = that.getTriggerIdentifier(apikey, namespace, name);
         if (that.triggers[triggerIdentifier]) {
-            that.triggers[triggerIdentifier].cronHandle.stop();
+            if (that.triggers[triggerIdentifier].cronHandle) {
+                that.triggers[triggerIdentifier].cronHandle.stop();
+            }
             delete that.triggers[triggerIdentifier];
 
             logger.info(method, 'trigger', triggerIdentifier, 'successfully deleted');
@@ -189,7 +204,14 @@ module.exports = function(
                             that.deleteTriggerFromDB(triggerIdentifier);
                         }
                         else {
-                            that.createTrigger(trigger.doc);
+                            that.createTrigger(trigger.doc)
+                            .then(triggerIdentifier => {
+                                logger.info(method, triggerIdentifier, 'created successfully');
+                            })
+                            .catch(err => {
+                                logger.error(method, err);
+                                that.deleteTriggerFromDB(triggerIdentifier);
+                            });
                         }
                     });
                 });
