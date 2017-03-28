@@ -100,7 +100,7 @@ module.exports = function(
             }
         }, function(err, res, body) {
             if (triggerHandle) {
-                logger.info(method, 'done http request, STATUS', res ? res.statusCode : res);
+                logger.info(method, triggerIdentifier, 'http post request, STATUS:', res ? res.statusCode : res);
                 if (err || res.statusCode >= 400) {
                     logger.error(method, 'there was an error invoking', triggerIdentifier, res ? res.statusCode : res, err, body);
                     if (!err && [408, 429, 500, 503].indexOf(res.statusCode) === -1) {
