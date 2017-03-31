@@ -25,10 +25,6 @@ app.set('port', process.env.PORT || 8080);
 // Whisk API Router Host
 var routerHost = process.env.ROUTER_HOST || 'localhost';
 
-// Maximum number of times to retry the invocation of an action
-// before deleting the associated trigger
-var retriesBeforeDelete = constants.RETRIES_BEFORE_DELETE;
-
 // Allow invoking servers with self-signed certificates.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
@@ -116,7 +112,7 @@ function init(server) {
         .then(nanoDb => {
             logger.info('init', 'trigger storage database details:', nanoDb);
 
-            var providerUtils = new ProviderUtils (logger, app, retriesBeforeDelete, nanoDb, routerHost);
+            var providerUtils = new ProviderUtils (logger, app, nanoDb, routerHost);
             var providerRAS = new ProviderRAS (logger);
             var providerHealth = new ProviderHealth (logger, providerUtils);
             var providerCreate = new ProviderCreate (logger, providerUtils);

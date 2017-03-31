@@ -6,19 +6,19 @@ var constants = require('./constants.js');
 module.exports = function(
   logger,
   app,
-  retriesBeforeDelete,
   triggerDB,
   routerHost
 ) {
 
     this.logger = logger;
     this.app = app;
-    this.retriesBeforeDelete = retriesBeforeDelete;
     this.triggerDB = triggerDB;
     this.routerHost = routerHost;
 
     // this is the default trigger fire limit (in the event that is was not set during trigger creation)
-    this.defaultTriggerFireLimit = constants.DEFAULT_TRIGGER_COUNT;
+    this.defaultTriggerFireLimit = constants.DEFAULT_MAX_TRIGGERS;
+    this.retryDelay = constants.RETRY_DELAY;
+    this.retryAttempts = constants.RETRY_ATTEMPTS;
 
     // Log HTTP Requests
     app.use(function(req, res, next) {
@@ -50,13 +50,16 @@ module.exports = function(
                         function onTick() {
                             var triggerHandle = that.triggers[triggerIdentifier];
                             if (triggerHandle && (triggerHandle.maxTriggers === -1 || triggerHandle.triggersLeft > 0)) {
-                                that.fireTrigger(newTrigger.namespace, newTrigger.name, newTrigger.payload, newTrigger.apikey);
+                                try {
+                                    that.fireTrigger(newTrigger.namespace, newTrigger.name, newTrigger.payload, newTrigger.apikey);
+                                } catch (e) {
+                                    logger.error(method, 'Exception occurred while firing trigger', triggerIdentifier,  e);
+                                }
                             }
                         }
                     );
                     logger.info(method, triggerIdentifier, 'starting cron job');
                     cronHandle.start();
-
 
                     that.triggers[triggerIdentifier] = {
                         cron: newTrigger.cron,
@@ -87,42 +90,76 @@ module.exports = function(
         // https://github.com/openwhisk/openwhisk-alarms-trigger/issues/9
         // resolved this in create.js by validating apikey and failing with a useful message if it is
         // not present
-        var keyParts = apikey.split(':');
-        var triggerHandle = that.triggers[triggerIdentifier];
+        var auth = apikey.split(':');
+        var dataTrigger = that.triggers[triggerIdentifier];
+        var uri = host + '/api/v1/namespaces/' + namespace + '/triggers/' + name;
 
-        request({
-            method: 'POST',
-            uri: host + '/api/v1/namespaces/' + namespace + '/triggers/' + name,
-            json: payload,
-            auth: {
-                user: keyParts[0],
-                pass: keyParts[1]
-            }
-        }, function(err, res, body) {
-            if (triggerHandle) {
-                logger.info(method, triggerIdentifier, 'http post request, STATUS:', res ? res.statusCode : res);
-                if (err || res.statusCode >= 400) {
-                    logger.error(method, 'there was an error invoking', triggerIdentifier, res ? res.statusCode : res, err, body);
-                    if (!err && [408, 429, 500, 503].indexOf(res.statusCode) === -1) {
-                        //delete dead triggers
-                        that.deleteTrigger(triggerHandle.namespace, triggerHandle.name, triggerHandle.apikey);
-                    }
-                } else {
-                    // only manage trigger fires if they are not infinite
-                    if (triggerHandle.maxTriggers !== -1) {
-                        triggerHandle.triggersLeft--;
-                    }
-                    logger.info(method, 'fired', triggerIdentifier, 'with body', body, triggerHandle.triggersLeft, 'triggers left');
-                }
+        that.postTrigger(dataTrigger, payload, uri, auth, that.retryAttempts)
+        .then(triggerId => {
+            logger.info(method, 'Trigger', triggerId, 'was successfully fired');
+        }).catch(err => {
+            logger.error(method, err);
+        });
+    };
 
-                if (triggerHandle.triggersLeft === 0) {
-                    logger.info('onTick', 'no more triggers left, deleting');
-                    that.deleteTrigger(triggerHandle.namespace, triggerHandle.name, triggerHandle.apikey);
+    this.postTrigger = function (dataTrigger, payload, uri, auth, retryCount) {
+        var method = 'postTrigger';
+
+        return new Promise(function(resolve, reject) {
+
+            request({
+                method: 'post',
+                uri: uri,
+                auth: {
+                    user: auth[0],
+                    pass: auth[1]
+                },
+                json: payload
+            }, function(error, response) {
+                try {
+                    var triggerIdentifier = that.getTriggerIdentifier(dataTrigger.apikey, dataTrigger.namespace, dataTrigger.name);
+                    logger.info(method, triggerIdentifier, 'http post request, STATUS:', response ? response.statusCode : response);
+
+                    if (error || response.statusCode >= 400) {
+                        logger.error(method, 'there was an error invoking', triggerIdentifier, response ? response.statusCode : error);
+                        if (!error && [408, 429, 500, 502, 503].indexOf(response.statusCode) === -1) {
+                            //delete dead triggers
+                            that.deleteTrigger(dataTrigger.namespace, dataTrigger.name, dataTrigger.apikey);
+                            reject('Deleted dead trigger ' + triggerIdentifier);
+                        }
+                        else {
+                            if (retryCount > 0) {
+                                logger.info(method, 'attempting to fire trigger again', triggerIdentifier, 'Retry Count:', (retryCount - 1));
+                                setTimeout(function () {
+                                    that.postTrigger(dataTrigger, payload, uri, auth, (retryCount - 1))
+                                    .then(triggerId => {
+                                        resolve(triggerId);
+                                    }).catch(err => {
+                                        reject(err);
+                                    });
+                                }, that.retryDelay);
+                            } else {
+                                reject('Unable to reach server to fire trigger ' + triggerIdentifier);
+                            }
+                        }
+                    } else {
+                        // only manage trigger fires if they are not infinite
+                        if (dataTrigger.maxTriggers !== -1) {
+                            dataTrigger.triggersLeft--;
+                        }
+                        logger.info(method, 'fired', triggerIdentifier, dataTrigger.triggersLeft, 'triggers left');
+
+                        if (dataTrigger.triggersLeft === 0) {
+                            logger.info(method, 'no more triggers left, deleting', triggerIdentifier);
+                            that.deleteTrigger(dataTrigger.namespace, dataTrigger.name, dataTrigger.apikey);
+                        }
+                        resolve(triggerIdentifier);
+                    }
                 }
-            }
-            else {
-                logger.info(method, 'trigger', triggerIdentifier, 'was deleted between invocations');
-            }
+                catch(err) {
+                    reject('Exception occurred while firing trigger ' + err);
+                }
+            });
         });
     };
 
@@ -197,7 +234,7 @@ module.exports = function(
                             user: auth[0],
                             pass: auth[1]
                         }
-                    }, function(error, response, body) {
+                    }, function(error, response) {
                         //delete from database if trigger no longer exists (404)
                         if (!error && response.statusCode === 404) {
                             logger.info(method, 'trigger', triggerIdentifier, 'could not be found');
