@@ -3,8 +3,6 @@ var moment = require('moment');
 var winston = require('winston');
 var safeStringify = require('json-stringify-safe');
 
-var emailRegex = /(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))/g;
-
 var logger = new winston.Logger({
     transports: [
         new winston.transports.Console({
@@ -16,11 +14,6 @@ var logger = new winston.Logger({
                 return '[' + options.timestamp() +'] ['+ options.level.toUpperCase() +'] [??] [alarmsTrigger] ' +  options.message;
             }
         })
-    ],
-    filters: [
-        function maskEmails(level, msg) {
-            return msg.replace(emailRegex, 'xxxxxxxx');
-        }
     ]
 });
 
