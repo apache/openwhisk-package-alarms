@@ -122,7 +122,7 @@ module.exports = function(
 
                     if (error || response.statusCode >= 400) {
                         logger.error(method, 'there was an error invoking', triggerIdentifier, response ? response.statusCode : error);
-                        if (!error && [408, 429, 500, 502, 503].indexOf(response.statusCode) === -1) {
+                        if (!error && [408, 429, 500, 502, 503, 504].indexOf(response.statusCode) === -1) {
                             //delete dead triggers
                             that.deleteTrigger(dataTrigger.namespace, dataTrigger.name, dataTrigger.apikey);
                             reject('Deleted dead trigger ' + triggerIdentifier);
