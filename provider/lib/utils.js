@@ -97,6 +97,10 @@ module.exports = function(
         that.postTrigger(dataTrigger, payload, uri, auth, that.retryAttempts)
         .then(triggerId => {
             logger.info(method, 'Trigger', triggerId, 'was successfully fired');
+            if (dataTrigger.triggersLeft === 0) {
+                that.disableTrigger(triggerIdentifier, undefined, 'Automatically disabled after reaching max triggers');
+                logger.error(method, 'no more triggers left, disabled', triggerIdentifier);
+            }
         }).catch(err => {
             logger.error(method, err);
         });
@@ -122,10 +126,11 @@ module.exports = function(
 
                     if (error || response.statusCode >= 400) {
                         logger.error(method, 'there was an error invoking', triggerIdentifier, response ? response.statusCode : error);
-                        if (!error && [408, 429, 500, 502, 503, 504].indexOf(response.statusCode) === -1) {
-                            //delete dead triggers
-                            that.deleteTrigger(dataTrigger.namespace, dataTrigger.name, dataTrigger.apikey);
-                            reject('Deleted dead trigger ' + triggerIdentifier);
+                        if (!error && that.shouldDisableTrigger(response.statusCode)) {
+                            //disable trigger
+                            var message = 'Automatically disabled after receiving a ' + response.statusCode + ' status code when firing the trigger';
+                            that.disableTrigger(triggerIdentifier, response.statusCode, message);
+                            reject('Disabled trigger ' + triggerIdentifier + ' due to status code: ' + response.statusCode);
                         }
                         else {
                             if (retryCount > 0) {
@@ -148,11 +153,6 @@ module.exports = function(
                             dataTrigger.triggersLeft--;
                         }
                         logger.info(method, 'fired', triggerIdentifier, dataTrigger.triggersLeft, 'triggers left');
-
-                        if (dataTrigger.triggersLeft === 0) {
-                            logger.info(method, 'no more triggers left, deleting', triggerIdentifier);
-                            that.deleteTrigger(dataTrigger.namespace, dataTrigger.name, dataTrigger.apikey);
-                        }
                         resolve(triggerIdentifier);
                     }
                 }
@@ -163,20 +163,22 @@ module.exports = function(
         });
     };
 
-    this.deleteTrigger = function (namespace, name, apikey) {
+    this.shouldDisableTrigger = function (statusCode) {
+        return ((statusCode >= 400 && statusCode < 500) && [408, 429].indexOf(statusCode) === -1);
+    };
 
-        var method = 'deleteTrigger';
+    this.disableTrigger = function (triggerIdentifier, statusCode, message) {
 
-        var triggerIdentifier = that.getTriggerIdentifier(apikey, namespace, name);
+        var method = 'disableTrigger';
+
         if (that.triggers[triggerIdentifier]) {
             if (that.triggers[triggerIdentifier].cronHandle) {
                 that.triggers[triggerIdentifier].cronHandle.stop();
             }
             delete that.triggers[triggerIdentifier];
+            logger.info(method, 'trigger', triggerIdentifier, 'successfully disabled');
 
-            logger.info(method, 'trigger', triggerIdentifier, 'successfully deleted');
-
-            that.deleteTriggerFromDB(triggerIdentifier);
+            that.disableTriggerInDB(triggerIdentifier, statusCode, message);
             return true;
         }
         else {
@@ -185,24 +187,79 @@ module.exports = function(
         }
     };
 
+    this.disableTriggerInDB = function (triggerIdentifier, statusCode, message) {
+
+        var method = 'disableTriggerInDB';
+
+        that.triggerDB.get(triggerIdentifier, function (err, existing) {
+            if (!err) {
+                if (!existing.status || existing.status.active === true) {
+                    var updatedTrigger = existing;
+                    var status = {
+                        'active': false,
+                        'dateChanged': new Date().toISOString(),
+                        'reason': {'kind': 'AUTO', 'statusCode': statusCode, 'message': message}
+                    };
+                    updatedTrigger.status = status;
+
+                    that.triggerDB.insert(updatedTrigger, triggerIdentifier, function (err) {
+                        if (err) {
+                            logger.error(method, 'there was an error while disabling', triggerIdentifier, 'in database.', err);
+                        }
+                        else {
+                            logger.info(method, 'trigger', triggerIdentifier, 'successfully disabled in database');
+                        }
+                    });
+                }
+            }
+            else {
+                logger.error(method, 'could not find', triggerIdentifier, 'in database');
+            }
+        });
+    };
+
+    this.deleteTrigger = function (triggerIdentifier) {
+
+        var method = 'deleteTrigger';
+
+        if (that.triggers[triggerIdentifier]) {
+            if (that.triggers[triggerIdentifier].cronHandle) {
+                that.triggers[triggerIdentifier].cronHandle.stop();
+            }
+            delete that.triggers[triggerIdentifier];
+            logger.info(method, 'trigger', triggerIdentifier, 'successfully deleted from memory');
+        }
+        //trigger may be disabled (removed from memory, but still exist in db)
+       return that.deleteTriggerFromDB(triggerIdentifier);
+    };
+
     this.deleteTriggerFromDB = function (triggerIdentifier) {
 
         var method = 'deleteTriggerFromDB';
 
-        that.triggerDB.get(triggerIdentifier, function (err, body) {
-            if (!err) {
-                that.triggerDB.destroy(body._id, body._rev, function (err) {
-                    if (err) {
-                        logger.error(method, 'there was an error while deleting', triggerIdentifier, 'from database');
-                    }
-                    else {
-                        logger.info(method, 'trigger', triggerIdentifier, 'successfully deleted from database');
-                    }
-                });
-            }
-            else {
-                logger.error(method, 'there was an error while deleting', triggerIdentifier, 'from database');
-            }
+        return new Promise(function(resolve, reject) {
+
+            that.triggerDB.get(triggerIdentifier, function (err, existing) {
+                if (!err) {
+                    that.triggerDB.destroy(existing._id, existing._rev, function (err) {
+                        if (err) {
+                            var errorMessage = 'there was an error while deleting ' + triggerIdentifier + ' from database. ' + err;
+                            logger.error(method, errorMessage);
+                            reject(errorMessage);
+                        }
+                        else {
+                            var message = 'trigger ' + triggerIdentifier + ' successfully deleted';
+                            logger.info(method, message);
+                            resolve(message);
+                        }
+                    });
+                }
+                else {
+                    var message = 'could not find ' + triggerIdentifier + ' in database';
+                    logger.error(method, message);
+                    reject(message);
+                }
+            });
         });
     };
 
@@ -216,41 +273,47 @@ module.exports = function(
         that.triggerDB.view('filters', 'only_triggers', {include_docs: true}, function(err, body) {
             if (!err) {
                 body.rows.forEach(function(trigger) {
-                    //check if trigger still exists in whisk db
-                    var namespace = trigger.doc.namespace;
-                    var name = trigger.doc.name;
-                    var apikey = trigger.doc.apikey;
-                    var triggerIdentifier = that.getTriggerIdentifier(apikey, namespace, name);
-                    logger.info(method, 'Checking if trigger', triggerIdentifier, 'still exists');
+                    if (!trigger.doc.status || trigger.doc.status.active === true) {
+                        //check if trigger still exists in whisk db
+                        var namespace = trigger.doc.namespace;
+                        var name = trigger.doc.name;
+                        var apikey = trigger.doc.apikey;
+                        var triggerIdentifier = that.getTriggerIdentifier(apikey, namespace, name);
+                        logger.info(method, 'Checking if trigger', triggerIdentifier, 'still exists');
 
-                    var host = 'https://' + routerHost +':'+ 443;
-                    var triggerURL = host + '/api/v1/namespaces/' + namespace + '/triggers/' + name;
-                    var auth = apikey.split(':');
+                        var host = 'https://' + routerHost + ':' + 443;
+                        var triggerURL = host + '/api/v1/namespaces/' + namespace + '/triggers/' + name;
+                        var auth = apikey.split(':');
 
-                    request({
-                        method: 'get',
-                        url: triggerURL,
-                        auth: {
-                            user: auth[0],
-                            pass: auth[1]
-                        }
-                    }, function(error, response) {
-                        //delete from database if trigger no longer exists (404)
-                        if (!error && response.statusCode === 404) {
-                            logger.info(method, 'trigger', triggerIdentifier, 'could not be found');
-                            that.deleteTriggerFromDB(triggerIdentifier);
-                        }
-                        else {
-                            that.createTrigger(trigger.doc)
-                            .then(triggerIdentifier => {
-                                logger.info(method, triggerIdentifier, 'created successfully');
-                            })
-                            .catch(err => {
-                                logger.error(method, err);
-                                that.deleteTriggerFromDB(triggerIdentifier);
-                            });
-                        }
-                    });
+                        request({
+                            method: 'get',
+                            url: triggerURL,
+                            auth: {
+                                user: auth[0],
+                                pass: auth[1]
+                            }
+                        }, function (error, response) {
+                            //disable trigger in database if trigger is dead
+                            if (!error && that.shouldDisableTrigger(response.statusCode)) {
+                                var message = 'Automatically disabled after receiving a ' + response.statusCode + ' status code when re-creating the trigger';
+                                that.disableTriggerInDB(triggerIdentifier, response.statusCode, message);
+                                logger.error(method, 'trigger', triggerIdentifier, 'has been disabled due to status code', response.statusCode);
+                            }
+                            else {
+                                that.createTrigger(trigger.doc)
+                                .then(triggerIdentifier => {
+                                    logger.info(method, triggerIdentifier, 'created successfully');
+                                }).catch(err => {
+                                    var message = 'Automatically disabled after receiving an exception when re-creating the trigger';
+                                    that.disableTriggerInDB(triggerIdentifier, undefined, message);
+                                    logger.error(method, 'Disabled trigger', triggerIdentifier, 'due to exception:', err);
+                                });
+                            }
+                        });
+                    }
+                    else {
+                        logger.info(method, 'ignoring trigger', trigger.doc._id, 'since it is disabled.');
+                    }
                 });
             }
             else {
@@ -260,7 +323,7 @@ module.exports = function(
     };
 
     this.sendError = function (method, code, message, res) {
-        logger.warn(method, message);
+        logger.error(method, message);
         res.status(code).json({error: message});
     };
 
