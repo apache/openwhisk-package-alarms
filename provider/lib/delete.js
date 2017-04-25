@@ -24,13 +24,13 @@ module.exports = function(logger, utils) {
         }, function(error, response, body) {
             //delete from database if user is authenticated (200) or if trigger has already been deleted (404)
             if (!error && (response.statusCode === 200 || response.statusCode === 404)) {
-                var deleted = utils.deleteTrigger(req.params.namespace, req.params.name, req.user.uuid + ':' + req.user.key);
-                if (deleted) {
-                    res.status(200).json({ok: 'trigger ' + req.params.name + ' successfully deleted'});
-                }
-                else {
-                    res.status(404).json({error: 'trigger ' + req.params.name + ' not found'});
-                }
+                var triggerIdentifier = utils.getTriggerIdentifier(req.user.uuid + ':' + req.user.key, req.params.namespace, req.params.name);
+                utils.deleteTrigger(triggerIdentifier)
+                .then(message => {
+                    res.status(200).json({ok: message});
+                }).catch(message => {
+                    res.status(400).json({error: message});
+                });
             }
             else {
                 var errorMsg = 'Trigger ' + req.params.name  + ' cannot be deleted.';

@@ -72,19 +72,22 @@ module.exports = function (logger, utils) {
             else {
                 utils.createTrigger(newTrigger)
                 .then(triggerIdentifier => {
+                    newTrigger.status = {
+                        'active': true,
+                        'dateChanged': new Date().toISOString(),
+                    };
                     utils.triggerDB.insert(newTrigger, triggerIdentifier, function (err) {
                         if (!err) {
                             logger.info(method, triggerIdentifier, 'created successfully');
                             res.status(200).json({ok: 'your trigger was created successfully'});
                         }
                         else {
-                            return utils.sendError(method, 400, 'error creating alarm trigger', res);
+                            return utils.sendError(method, 400, 'error creating alarm trigger. ' + err, res);
                         }
                     });
                 })
                 .catch (e => {
-                    logger.error(method, e);
-                    return utils.sendError(method, 400, 'error creating alarm trigger', res);
+                    return utils.sendError(method, 400, 'error creating alarm trigger. ' + e, res);
                 });
             }
         });
