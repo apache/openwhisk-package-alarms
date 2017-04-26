@@ -230,10 +230,10 @@ module.exports = function(
             logger.info(method, 'trigger', triggerIdentifier, 'successfully deleted from memory');
         }
         //trigger may be disabled (removed from memory, but still exist in db)
-       return that.deleteTriggerFromDB(triggerIdentifier);
+       return that.deleteTriggerFromDB(triggerIdentifier, that.retryAttempts);
     };
 
-    this.deleteTriggerFromDB = function (triggerIdentifier) {
+    this.deleteTriggerFromDB = function (triggerIdentifier, retryCount) {
 
         var method = 'deleteTriggerFromDB';
 
@@ -243,9 +243,22 @@ module.exports = function(
                 if (!err) {
                     that.triggerDB.destroy(existing._id, existing._rev, function (err) {
                         if (err) {
-                            var errorMessage = 'there was an error while deleting ' + triggerIdentifier + ' from database. ' + err;
-                            logger.error(method, errorMessage);
-                            reject(errorMessage);
+                            if (err.statusCode === 409 && retryCount > 0) {
+                                logger.info(method, 'delete failed, attempting to delete trigger again', triggerIdentifier, 'Retry Count:', (retryCount - 1));
+                                setTimeout(function () {
+                                    that.deleteTriggerFromDB(triggerIdentifier, (retryCount - 1))
+                                    .then(message => {
+                                        resolve(message);
+                                    }).catch(err => {
+                                        reject(err);
+                                    });
+                                }, that.retryDelay);
+                            }
+                            else {
+                                var errorMessage = 'there was an error while deleting ' + triggerIdentifier + ' from database. ' + err;
+                                logger.error(method, errorMessage);
+                                reject(errorMessage);
+                            }
                         }
                         else {
                             var message = 'trigger ' + triggerIdentifier + ' successfully deleted';
