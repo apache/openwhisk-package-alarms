@@ -1,5 +1,5 @@
 const TRIGGER_DB_SUFFIX = 'alarmservice';
-const DEFAULT_MAX_TRIGGERS = 1000000;
+const DEFAULT_MAX_TRIGGERS = -1;
 const RETRY_ATTEMPTS = 10;
 const RETRY_DELAY = 1000; //in milliseconds
 

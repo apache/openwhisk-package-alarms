@@ -1,4 +1,4 @@
-module.exports = function(logger) {
+module.exports = function() {
 
   // Test Endpoint
   this.endPoint = '/ping';
