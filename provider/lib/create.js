@@ -55,6 +55,7 @@ module.exports = function (logger, utils) {
             if (error || response.statusCode >= 400) {
                 var errorMsg = 'Trigger authentication request failed.';
                 logger.error(method, errorMsg, error);
+
                 if (error) {
                     res.status(400).json({
                         message: errorMsg,
@@ -62,10 +63,16 @@ module.exports = function (logger, utils) {
                     });
                 }
                 else {
-                    var info = JSON.parse(body);
+                    var info;
+                    try {
+                        info = JSON.parse(body);
+                    }
+                    catch (e) {
+                        info = 'Authentication request failed with status code ' + response.statusCode;
+                    }
                     res.status(response.statusCode).json({
                         message: errorMsg,
-                        error: info.error
+                        error: typeof info === 'object' ? info.error : info
                     });
                 }
             }

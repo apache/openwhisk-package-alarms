@@ -42,10 +42,16 @@ module.exports = function(logger, utils) {
                     });
                 }
                 else {
-                    var info = JSON.parse(body);
+                    var info;
+                    try {
+                        info = JSON.parse(body);
+                    }
+                    catch (e) {
+                        info = 'Authentication request failed with status code ' + response.statusCode;
+                    }
                     res.status(response.statusCode).json({
                         message: errorMsg,
-                        error: info.error
+                        error: typeof info === 'object' ? info.error : info
                     });
                 }
             }
