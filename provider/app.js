@@ -87,7 +87,6 @@ function createDatabase(nanop) {
 }
 
 function createTriggerDb() {
-    logger.info('createTriggerDb', 'database url is ' +  dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
     var nanop = require('nano')(dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
     if (nanop !== null) {
         return createDatabase (nanop);
