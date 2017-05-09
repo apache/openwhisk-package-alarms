@@ -5,14 +5,30 @@ sudo: required
 language: scala
 scala:
    - 2.11.6
-
+env:
+  global:
+    - secure: "lvTeN65qMgv4hZqfmyor6Uf9OdRczFjJgg1lio9uyWLukDAM1UQgDJCox3olBpYA7GFQi8vTtXWPPLw0Mxex+KsQFcpumNQuqMaMKhqPpPEV6n/s1HRApa7fP8lcZ33MnDo2OdnXakdmB4OJesMmM5gRzE7XqL4aHisP17vOKa68ZQdjxgzDzMftGsbaXJ/Mz0SjslOaL5Np4LadgcSSXwO6g0Qr6LHVaPvsbzlnsPXeDFIHRO5qq8XbYNznpx/4iGoDJjJfr8EIn6fr12wAaJ5O6RfVfIHYliVIautk+hfDFa3pz8fBREtYcBEAfZKyblPymoBSagU6Qj1i9DTHMYJcLvf7MGnFS6cJsGJv2CNO/SbPIHmfSDlgwyYRabppSRLVm95jGxQrIh34ju4aG5vum4I4PLEYFJJw+QNbne3QMJNaphhrntdHRSVyfG3YWt2Sg9ubE/02eWzpHiF4pVpkyAQu1nckNGwwyTsMVNZ9RVYD/zSHvtOO39Yo+DGUgh2n7HtfSULBWeWfaFetIZG4bsG6aRe+sVZvqrGrIfbr11zJEpLgjgPfNF3myCY5KkXZY8t+kE/A+TUd64sfAy5xCI+YRiH77bK268XJsXnaKU0Dq2tU6k1uQYHVFcHZUzEXazHqdTJmmdkls5CDdN5ulYKjzB7vX/ZXfMvLG0I="
+    - secure: "jyY98VXK7W8vKEBx0/JTGOI0Xi0yPqFK7/SFG9j/iz0hgAeKrmXm1HJV6Cci1mpcEPhBqILYNuJGvFuyUWy1is0UCoVHtfrCbMon3Lh3pQarMEWbjjzdB6m51wogm+5ciDNBeQV9Eu4nhQfj3Yb6yu38utIcbAqhuVgM4E0iepuZYK9qkII2caoXnv2kO8RKggzSBarIT4jPvGlY30eejrEvAVRkvQBcgDIUaSX7XrpQCdry6fYwL0fO7hrOd90Q49FLPOkOtyMAQ69p2P8oc8JkZdyH59MPOqpgWszc9kiy7R4CKMCX1X1QAxiwFd84jsMi71kKbnyKtsD54H5Tmj3Ai6+Epzgd6Ey6JFycSQbWWsr16XV5e5wMUpXDMrY8vlmVIcikdVWFvRTR5pmWxAPq0Cx8PvxkCpDE31pevyEFRmbLqb4BxGN4LH1dUBL0bwknrALehSuJAS06M53284HUF0fiCSgY63E+sp+HyK1Y6R9qZeUXftxEGH0vovWYJ94NsqWa/+g4vGeFfhKPbnlK4+gVsTAHV1IRzCLIYTqdY/pFLoYyu6ZSVAvKzRRgyCerN48AUF4nTPuQtukU9d724Z6ZPsWi2i63HHsrDidqbnBWdbSFq9iljjbrGc23OWrDY3QwhHKcPn3Vn7WKuZcx71+Z/7GWLWaV4kGAHGg="
 services:
   - docker
-
-install: true
 
 before_install:
   - ./tools/travis/setup.sh
 
+install: true
+
 script:
   - ./tools/travis/build.sh
+
+deploy:
+  # deploy latest
+  - provider: script
+    script: ./tools/travis/deploy.sh openwhisk alarmprovider latest
+    on:
+      branch: master
+  # deploy tag
+  - provider: script
+    script: ./tools/travis/deploy.sh openwhisk alarmprovider $TRAVIS_TAG
+    on:
+      tags: true
+      all_branches: true

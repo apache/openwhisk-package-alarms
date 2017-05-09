@@ -1,4 +1,5 @@
 # Using the Alarm package
+[![Build Status](https://travis-ci.org/apache/incubator-openwhisk-package-alarms.svg?branch=master)](https://travis-ci.org/apache/incubator-openwhisk-package-alarms)
 
 The `/whisk.system/alarms` package can be used to fire a trigger at a specified frequency. This is useful for setting up recurring jobs or tasks, such as invoking a system backup action every hour.
 
