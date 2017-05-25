@@ -1,0 +1,8 @@
+{
+  "name": "alarmWebAction",
+  "version": "1.0.0",
+  "main": "alarmWebAction.js",
+  "dependencies" : {
+    "cron": "^1.2.1"
+  }
+}

@@ -12,8 +12,7 @@ var logger = require('./Logger');
 var ProviderUtils = require('./lib/utils.js');
 var ProviderHealth = require('./lib/health.js');
 var ProviderRAS = require('./lib/ras.js');
-var ProviderCreate = require('./lib/create.js');
-var ProviderDelete = require('./lib/delete.js');
+var ProviderActivation = require('./lib/active.js');
 var constants = require('./lib/constants.js');
 
 // Initialize the Express Application
@@ -22,22 +21,18 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.set('port', process.env.PORT || 8080);
 
-// Whisk API Router Host
-var routerHost = process.env.ROUTER_HOST || 'localhost';
-
 // Allow invoking servers with self-signed certificates.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 // If it does not already exist, create the triggers database.  This is the database that will
 // store the managed triggers.
-//
 var dbUsername = process.env.DB_USERNAME;
 var dbPassword = process.env.DB_PASSWORD;
 var dbHost = process.env.DB_HOST;
 var dbProtocol = process.env.DB_PROTOCOL;
 var dbPrefix = process.env.DB_PREFIX;
 var databaseName = dbPrefix + constants.TRIGGER_DB_SUFFIX;
-var ddname = '_design/filters';
+var ddname = '_design/triggers';
 
 // Create the Provider Server
 var server = http.createServer(app);
@@ -46,34 +41,33 @@ server.listen(app.get('port'), function(){
 });
 
 function createDatabase(nanop) {
-    logger.info('createDatabase', 'creating the trigger database');
+    var method = 'createDatabase';
+    logger.info(method, 'creating the trigger database');
+
     return new Promise(function(resolve, reject) {
         nanop.db.create(databaseName, function (err, body) {
             if (!err) {
-                logger.info('createDatabase', 'created trigger database:', databaseName);
+                logger.info(method, 'created trigger database:', databaseName);
             }
             else {
-                logger.info('createDatabase', 'failed to create trigger database:', databaseName, err);
+                logger.info(method, 'failed to create trigger database:', databaseName, err);
             }
             var db = nanop.db.use(databaseName);
-            var only_triggers = {
-                map: function (doc) {
-                    if (doc.maxTriggers) {
-                        emit(doc._id, 1);
-                    }
-                }.toString()
-            };
+
+            var only_triggers_by_worker = function(doc, req) {
+                return doc.maxTriggers && ((!doc.worker && req.query.worker === 'worker0') || (doc.worker === req.query.worker));
+            }.toString();
 
             db.get(ddname, function (error, body) {
                 if (error) {
                     //new design doc
                     db.insert({
-                        views: {
-                            only_triggers: only_triggers
+                        filters: {
+                            only_triggers_by_worker: only_triggers_by_worker
                         },
                     }, ddname, function (error, body) {
                         if (error) {
-                            reject("view could not be created: " + error);
+                            reject("filter could not be created: " + error);
                         }
                         resolve(db);
                     });
@@ -98,41 +92,38 @@ function createTriggerDb() {
 
 // Initialize the Provider Server
 function init(server) {
+    var method = 'init';
 
     if (server !== null) {
         var address = server.address();
         if (address === null) {
-            logger.error('init', 'Error initializing server. Perhaps port is already in use.');
+            logger.error(method, 'Error initializing server. Perhaps port is already in use.');
             process.exit(-1);
         }
     }
 
     createTriggerDb()
-        .then(nanoDb => {
-            logger.info('init', 'trigger storage database details:', nanoDb);
+    .then(nanoDb => {
+        logger.info(method, 'trigger storage database details:', nanoDb);
 
-            var providerUtils = new ProviderUtils (logger, app, nanoDb, routerHost);
-            var providerRAS = new ProviderRAS (logger);
-            var providerHealth = new ProviderHealth (logger, providerUtils);
-            var providerCreate = new ProviderCreate (logger, providerUtils);
-            var providerDelete = new ProviderDelete (logger, providerUtils);
+        var providerUtils = new ProviderUtils(logger, nanoDb);
+        var providerRAS = new ProviderRAS();
+        var providerHealth = new ProviderHealth(providerUtils);
+        var providerActivation = new ProviderActivation(logger, providerUtils);
 
-            // RAS Endpoint
-            app.get(providerRAS.endPoint, providerRAS.ras);
+        // RAS Endpoint
+        app.get(providerRAS.endPoint, providerRAS.ras);
 
-            // Health Endpoint
-            app.get(providerHealth.endPoint, providerHealth.health);
+        // Health Endpoint
+        app.get(providerHealth.endPoint, providerHealth.health);
 
-            // Endpoint for Creating a new Trigger
-            app.post(providerCreate.endPoint, providerUtils.authorize, providerCreate.create);
+        // Activation Endpoint
+        app.get(providerActivation.endPoint, providerUtils.authorize, providerActivation.active);
 
-            // Endpoint for Deleting an existing Trigger.
-            app.delete(providerDelete.endPoint, providerUtils.authorize, providerDelete.delete);
-
-            providerUtils.initAllTriggers();
-        }).catch(err => {
-            logger.error('init', 'an error occurred creating database:', err);
-        });
+        providerUtils.initAllTriggers();
+    }).catch(err => {
+        logger.error(method, 'an error occurred creating database:', err);
+    });
 
 }
 
