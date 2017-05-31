@@ -98,6 +98,9 @@ module.exports = function(
         var method = 'postTrigger';
 
         return new Promise(function(resolve, reject) {
+            var triggerIdentifier = utils.getTriggerIdentifier(dataTrigger.apikey, dataTrigger.namespace, dataTrigger.name);
+
+            logger.info(method, triggerIdentifier, "http post request against OpenWhisk sent");
 
             request({
                 method: 'post',
@@ -109,7 +112,6 @@ module.exports = function(
                 json: payload
             }, function(error, response) {
                 try {
-                    var triggerIdentifier = utils.getTriggerIdentifier(dataTrigger.apikey, dataTrigger.namespace, dataTrigger.name);
                     logger.info(method, triggerIdentifier, 'http post request, STATUS:', response ? response.statusCode : response);
 
                     if (error || response.statusCode >= 400) {
