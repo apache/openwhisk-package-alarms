@@ -87,14 +87,14 @@ class AlarmsRedundancyTests
 
     it should "perform active swap by setting host0 active=false" in {
         val endpointURL = endpointPrefix + "0/active?active=false"
-        val expectedResult = "{\"active\":\"swapping\",\"worker\":\"worker0\",\"host\":\"host0\"}".parseJson.asJsObject
+        val expectedResult = "{\"worker\":\"worker0\",\"host\":\"host0\",\"active\":\"swapping\"}".parseJson.asJsObject
 
         makeGetCallWithExpectedResult(endpointURL, expectedResult)
     }
 
     it should "verify active swap by checking for host0 active=false" in {
         val endpointURL = endpointPrefix + "0/active"
-        val expectedResult = "{\"active\":\"false\",\"worker\":\"worker0\",\"host\":\"host0\"}".parseJson.asJsObject
+        val expectedResult = "{\"worker\":\"worker0\",\"host\":\"host0\",\"active\":false}".parseJson.asJsObject
 
         Thread.sleep(3000)
         makeGetCallWithExpectedResult(endpointURL, expectedResult)
@@ -102,7 +102,7 @@ class AlarmsRedundancyTests
 
     it should "verify active swap by checking for host1 active=true" in {
         val endpointURL = endpointPrefix + "1/active"
-        val expectedResult = "{\"active\":\"true\",\"worker\":\"worker0\",\"host\":\"host1\"}".parseJson.asJsObject
+        val expectedResult = "{\"worker\":\"worker0\",\"host\":\"host1\",\"active\":true}".parseJson.asJsObject
 
         makeGetCallWithExpectedResult(endpointURL, expectedResult)
     }

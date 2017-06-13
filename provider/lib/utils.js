@@ -13,11 +13,12 @@ module.exports = function(
     this.triggers = {};
     this.endpointAuth = process.env.ENDPOINT_AUTH;
     this.routerHost = process.env.ROUTER_HOST || 'localhost';
-    this.active = process.env.ACTIVE !== undefined ? process.env.ACTIVE.toLowerCase() : 'true';
     this.worker = process.env.WORKER || "worker0";
-    this.host = this.active === 'true' ? 'host0' : 'host1';
+    this.host = process.env.ACTIVE !== undefined && process.env.ACTIVE.toLowerCase() === 'false' ? 'host1' : 'host0';
+    this.activeHost = 'host0'; //default value on init (will be updated for existing redis)
     this.redisClient = redisClient;
     this.redisHash = triggerDB.config.db + '_' + this.worker;
+    this.redisKey = constants.REDIS_KEY;
 
     var retryDelay = constants.RETRY_DELAY;
     var retryAttempts = constants.RETRY_ATTEMPTS;
@@ -39,7 +40,7 @@ module.exports = function(
                 if (!(triggerIdentifier in utils.triggers)) {
                     cronHandle = new CronJob(newTrigger.cron,
                         function onTick() {
-                            if (utils.active === 'true') {
+                            if (utils.activeHost === utils.host) {
                                 var triggerHandle = utils.triggers[triggerIdentifier];
                                 if (triggerHandle && (triggerHandle.maxTriggers === -1 || triggerHandle.triggersLeft > 0)) {
                                     try {
@@ -165,7 +166,7 @@ module.exports = function(
         var method = 'disableTrigger';
 
         //only active/master provider should update the database
-        if (utils.active === 'true') {
+        if (utils.activeHost === utils.host) {
             triggerDB.get(triggerIdentifier, function (err, existing) {
                 if (!err) {
                     if (!existing.status || existing.status.active === true) {
@@ -353,17 +354,17 @@ module.exports = function(
 
                 //create a subscriber client that listens for requests to perform swap
                 subscriber.on("message", function (channel, message) {
-                    if (message === 'active swap') {
-                        logger.info(method, message, "message was sent for channel", channel);
-                        utils.swapActiveState();
+                    if (message === 'host0' || message === 'host1') {
+                        logger.info(method, message, "set to active host in channel", channel);
+                        utils.activeHost = message;
                     }
                 });
 
                 subscriber.subscribe(utils.redisHash);
 
-                redisClient.hgetAsync(utils.redisHash, utils.host)
-                .then(active => {
-                    return utils.initActiveState(active);
+                redisClient.hgetAsync(utils.redisHash, utils.redisKey)
+                .then(activeHost => {
+                    return utils.initActiveHost(activeHost);
                 })
                 .then(resolve)
                 .catch(err => {
@@ -376,32 +377,18 @@ module.exports = function(
         });
     };
 
-    this.initActiveState = function(isActive) {
-        var method = 'initActiveState';
+    this.initActiveHost = function(activeHost) {
+        var method = 'initActiveHost';
 
-        if (isActive === null) {
-            //initialize redis key with active state
-            logger.info(method, 'redis hset', utils.redisHash, utils.host, utils.active);
-            return redisClient.hsetAsync(utils.redisHash, utils.host, utils.active);
+        if (activeHost === null) {
+            //initialize redis key with active host
+            logger.info(method, 'redis hset', utils.redisHash, utils.redisKey, utils.activeHost);
+            return redisClient.hsetAsync(utils.redisHash, utils.redisKey, utils.activeHost);
         }
         else {
-            utils.active = isActive;
+            utils.activeHost = activeHost;
             return Promise.resolve();
         }
-    };
-
-    this.swapActiveState = function() {
-        var method = 'swapActiveState';
-
-        var active = utils.active === 'true' ? 'false' : 'true';
-
-        redisClient.hsetAsync(utils.redisHash, utils.host, active)
-        .then(() => {
-            utils.active = active;
-        })
-        .catch(err => {
-            logger.error(method, 'active swap failed', err);
-        });
     };
 
 };
