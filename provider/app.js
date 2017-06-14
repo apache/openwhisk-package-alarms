@@ -7,6 +7,7 @@ var http = require('http');
 var express = require('express');
 var request = require('request');
 var bodyParser = require('body-parser');
+var bluebird = require('bluebird');
 var logger = require('./Logger');
 
 var ProviderUtils = require('./lib/utils.js');
@@ -32,11 +33,12 @@ var dbHost = process.env.DB_HOST;
 var dbProtocol = process.env.DB_PROTOCOL;
 var dbPrefix = process.env.DB_PREFIX;
 var databaseName = dbPrefix + constants.TRIGGER_DB_SUFFIX;
+var redisUrl = process.env.REDIS_URL;
 var ddname = '_design/triggers';
 
 // Create the Provider Server
 var server = http.createServer(app);
-server.listen(app.get('port'), function(){
+server.listen(app.get('port'), function() {
     logger.info('server.listen', 'Express server listening on port ' + app.get('port'));
 });
 
@@ -83,16 +85,42 @@ function createDatabase(nanop) {
 function createTriggerDb() {
     var nanop = require('nano')(dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
     if (nanop !== null) {
-        return createDatabase (nanop);
+        return createDatabase(nanop);
     }
     else {
         Promise.reject('nano provider did not get created.  check db URL: ' + dbHost);
     }
 }
 
+function createRedisClient() {
+    var method = 'createRedisClient';
+
+    return new Promise(function(resolve, reject) {
+        if (redisUrl) {
+            var redis = require('redis');
+            bluebird.promisifyAll(redis.RedisClient.prototype);
+            var client = redis.createClient(redisUrl);
+
+            client.on("connect", function () {
+                resolve(client);
+            });
+
+            client.on("error", function (err) {
+                logger.error(method, 'Error creating redis', err);
+                reject(err);
+            });
+        }
+        else {
+            resolve();
+        }
+    });
+}
+
 // Initialize the Provider Server
 function init(server) {
     var method = 'init';
+    var nanoDb;
+    var providerUtils;
 
     if (server !== null) {
         var address = server.address();
@@ -103,10 +131,15 @@ function init(server) {
     }
 
     createTriggerDb()
-    .then(nanoDb => {
-        logger.info(method, 'trigger storage database details:', nanoDb);
-
-        var providerUtils = new ProviderUtils(logger, nanoDb);
+    .then(db => {
+        nanoDb = db;
+        return createRedisClient();
+    })
+    .then(client => {
+        providerUtils = new ProviderUtils(logger, nanoDb, client);
+        return providerUtils.initRedis();
+    })
+    .then(() => {
         var providerRAS = new ProviderRAS();
         var providerHealth = new ProviderHealth(providerUtils);
         var providerActivation = new ProviderActivation(logger, providerUtils);

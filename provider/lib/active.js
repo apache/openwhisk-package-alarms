@@ -1,33 +1,60 @@
-module.exports = function(logger, providerUtils) {
+module.exports = function(logger, utils) {
 
   // Active Endpoint
   this.endPoint = '/active';
 
-  this.active = function (req, res) {
+  this.active = function(req, res) {
       var method = 'active';
-      var response = {};
+
+      var response = {
+          worker: utils.worker,
+          host: utils.host,
+          active: utils.host === utils.activeHost
+      };
 
       if (req.query && req.query.active) {
-          var errorMessage = "Invalid query string";
-          try {
-              var active = JSON.parse(req.query.active);
-              if (typeof active !== 'boolean') {
-                  response.error = errorMessage;
+          var query = req.query.active.toLowerCase();
+
+          if (query !== 'true' && query !== 'false') {
+              response.error = "Invalid query string";
+              res.send(response);
+              return;
+          }
+
+          var redundantHost = utils.host === 'host0' ? 'host1' : 'host0';
+          var activeHost = query === 'true' ? utils.host : redundantHost;
+          if (utils.activeHost !== activeHost) {
+              if (utils.redisClient) {
+                  utils.redisClient.hsetAsync(utils.redisHash, utils.redisKey, activeHost)
+                  .then(() => {
+                      response.active = 'swapping';
+                      utils.redisClient.publish(utils.redisHash, activeHost);
+                      var msg = 'Active host swap in progress';
+                      logger.info(method, msg);
+                      response.message = msg;
+                      res.send(response);
+                  })
+                  .catch(err => {
+                      response.error = err;
+                      res.send(response);
+                  });
               }
-              else if (providerUtils.active !== active) {
-                  var message = 'The active state has been changed';
-                  logger.info(method, message, 'to', active);
-                  providerUtils.active = active;
+              else {
+                  response.active = utils.host === activeHost;
+                  utils.activeHost = activeHost;
+                  var message = 'The active state has changed';
+                  logger.info(method, message, 'to', activeHost);
                   response.message = message;
+                  res.send(response);
               }
           }
-          catch (e) {
-              response.error = errorMessage;
+          else {
+              res.send(response);
           }
       }
-      response.active = providerUtils.active;
-      response.worker = providerUtils.worker;
-      res.send(response);
+      else {
+          res.send(response);
+      }
   };
 
 };

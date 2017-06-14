@@ -6,14 +6,19 @@ var HttpStatus = require('http-status-codes');
 
 module.exports = function(
   logger,
-  triggerDB
+  triggerDB,
+  redisClient
 ) {
     this.module = 'utils';
     this.triggers = {};
     this.endpointAuth = process.env.ENDPOINT_AUTH;
     this.routerHost = process.env.ROUTER_HOST || 'localhost';
-    this.active =  !(process.env.ACTIVE && process.env.ACTIVE.toLowerCase() === 'false');
     this.worker = process.env.WORKER || "worker0";
+    this.host = process.env.ACTIVE !== undefined && process.env.ACTIVE.toLowerCase() === 'false' ? 'host1' : 'host0';
+    this.activeHost = 'host0'; //default value on init (will be updated for existing redis)
+    this.redisClient = redisClient;
+    this.redisHash = triggerDB.config.db + '_' + this.worker;
+    this.redisKey = constants.REDIS_KEY;
 
     var retryDelay = constants.RETRY_DELAY;
     var retryAttempts = constants.RETRY_ATTEMPTS;
@@ -35,7 +40,7 @@ module.exports = function(
                 if (!(triggerIdentifier in utils.triggers)) {
                     cronHandle = new CronJob(newTrigger.cron,
                         function onTick() {
-                            if (utils.active) {
+                            if (utils.activeHost === utils.host) {
                                 var triggerHandle = utils.triggers[triggerIdentifier];
                                 if (triggerHandle && (triggerHandle.maxTriggers === -1 || triggerHandle.triggersLeft > 0)) {
                                     try {
@@ -73,7 +78,7 @@ module.exports = function(
         }
     };
 
-    this.fireTrigger = function (namespace, name, payload, apikey) {
+    this.fireTrigger = function(namespace, name, payload, apikey) {
         var method = 'fireTrigger';
 
         var triggerIdentifier = utils.getTriggerIdentifier(apikey, namespace, name);
@@ -82,6 +87,7 @@ module.exports = function(
         var dataTrigger = utils.triggers[triggerIdentifier];
         var uri = host + '/api/v1/namespaces/' + namespace + '/triggers/' + name;
 
+        logger.info(method, 'Cron fired for', triggerIdentifier, 'attempting to fire trigger');
         utils.postTrigger(dataTrigger, payload, uri, auth, 0)
         .then(triggerId => {
             logger.info(method, 'Trigger', triggerId, 'was successfully fired');
@@ -94,7 +100,7 @@ module.exports = function(
         });
     };
 
-    this.postTrigger = function (dataTrigger, payload, uri, auth, retryCount) {
+    this.postTrigger = function(dataTrigger, payload, uri, auth, retryCount) {
         var method = 'postTrigger';
 
         return new Promise(function(resolve, reject) {
@@ -151,16 +157,16 @@ module.exports = function(
         });
     };
 
-    this.shouldDisableTrigger = function (statusCode) {
+    this.shouldDisableTrigger = function(statusCode) {
         return ((statusCode >= 400 && statusCode < 500) &&
             [HttpStatus.REQUEST_TIMEOUT, HttpStatus.TOO_MANY_REQUESTS].indexOf(statusCode) === -1);
     };
 
-    this.disableTrigger = function (triggerIdentifier, statusCode, message) {
+    this.disableTrigger = function(triggerIdentifier, statusCode, message) {
         var method = 'disableTrigger';
 
         //only active/master provider should update the database
-        if (utils.active) {
+        if (utils.activeHost === utils.host) {
             triggerDB.get(triggerIdentifier, function (err, existing) {
                 if (!err) {
                     if (!existing.status || existing.status.active === true) {
@@ -189,7 +195,7 @@ module.exports = function(
         }
     };
 
-    this.deleteTrigger = function (triggerIdentifier) {
+    this.deleteTrigger = function(triggerIdentifier) {
         var method = 'deleteTrigger';
 
         if (utils.triggers[triggerIdentifier].cronHandle) {
@@ -199,11 +205,11 @@ module.exports = function(
         logger.info(method, 'trigger', triggerIdentifier, 'successfully deleted from memory');
     };
 
-    this.getTriggerIdentifier = function (apikey, namespace, name) {
+    this.getTriggerIdentifier = function(apikey, namespace, name) {
         return apikey + '/' + namespace + '/' + name;
     };
 
-    this.initAllTriggers = function () {
+    this.initAllTriggers = function() {
         var method = 'initAllTriggers';
 
         logger.info(method, 'resetting system from last state');
@@ -262,7 +268,7 @@ module.exports = function(
         });
     };
 
-    this.setupFollow = function setupFollow(seq) {
+    this.setupFollow = function(seq) {
         var method = 'setupFollow';
 
         var feed = triggerDB.follow({ since: seq, include_docs: true, filter: ddname + '/' + filter, query_params: { worker: utils.worker } });
@@ -321,7 +327,6 @@ module.exports = function(
             var endpointAuth = utils.endpointAuth.split(':');
 
             if (endpointAuth[0] === uuid && endpointAuth[1] === key) {
-                logger.info(method, 'Authentication successful');
                 next();
             }
             else {
@@ -334,9 +339,56 @@ module.exports = function(
         }
     };
 
-    this.sendError = function (method, code, message, res) {
+    this.sendError = function(method, code, message, res) {
         logger.error(method, message);
         res.status(code).json({error: message});
+    };
+
+    this.initRedis = function() {
+        var method = 'initRedis';
+
+        return new Promise(function(resolve, reject) {
+
+            if (redisClient) {
+                var subscriber = redisClient.duplicate();
+
+                //create a subscriber client that listens for requests to perform swap
+                subscriber.on("message", function (channel, message) {
+                    if (message === 'host0' || message === 'host1') {
+                        logger.info(method, message, "set to active host in channel", channel);
+                        utils.activeHost = message;
+                    }
+                });
+
+                subscriber.subscribe(utils.redisHash);
+
+                redisClient.hgetAsync(utils.redisHash, utils.redisKey)
+                .then(activeHost => {
+                    return utils.initActiveHost(activeHost);
+                })
+                .then(resolve)
+                .catch(err => {
+                    reject(err);
+                });
+            }
+            else {
+                resolve();
+            }
+        });
+    };
+
+    this.initActiveHost = function(activeHost) {
+        var method = 'initActiveHost';
+
+        if (activeHost === null) {
+            //initialize redis key with active host
+            logger.info(method, 'redis hset', utils.redisHash, utils.redisKey, utils.activeHost);
+            return redisClient.hsetAsync(utils.redisHash, utils.redisKey, utils.activeHost);
+        }
+        else {
+            utils.activeHost = activeHost;
+            return Promise.resolve();
+        }
     };
 
 };

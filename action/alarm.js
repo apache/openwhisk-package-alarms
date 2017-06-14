@@ -1,7 +1,6 @@
 var request = require('request');
 
 function main(msg) {
-    console.log("alarm: ", msg);
 
     // for creation -> CREATE
     // for deletion -> DELETE
