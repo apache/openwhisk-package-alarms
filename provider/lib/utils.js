@@ -22,9 +22,8 @@ module.exports = function(
 
     var retryDelay = constants.RETRY_DELAY;
     var retryAttempts = constants.RETRY_ATTEMPTS;
-
-    var ddname = 'triggers';
-    var filter = 'only_triggers_by_worker';
+    var ddname = constants.DESIGN_DOC_NAME;
+    var filter = constants.FILTER_FUNCTION;
 
     var utils = this;
 

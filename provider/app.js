@@ -34,7 +34,7 @@ var dbProtocol = process.env.DB_PROTOCOL;
 var dbPrefix = process.env.DB_PREFIX;
 var databaseName = dbPrefix + constants.TRIGGER_DB_SUFFIX;
 var redisUrl = process.env.REDIS_URL;
-var ddname = '_design/triggers';
+var ddname = '_design/' + constants.DESIGN_DOC_NAME;
 
 // Create the Provider Server
 var server = http.createServer(app);
@@ -148,7 +148,7 @@ function init(server) {
         app.get(providerRAS.endPoint, providerRAS.ras);
 
         // Health Endpoint
-        app.get(providerHealth.endPoint, providerHealth.health);
+        app.get(providerHealth.endPoint, providerUtils.authorize, providerHealth.health);
 
         // Activation Endpoint
         app.get(providerActivation.endPoint, providerUtils.authorize, providerActivation.active);
