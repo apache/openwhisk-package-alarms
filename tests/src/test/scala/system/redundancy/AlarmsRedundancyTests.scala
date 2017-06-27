@@ -27,8 +27,8 @@ import spray.json.{pimpAny, _}
 /**
  * These tests verify that an alarms redundancy (master/slave) configuration
  * works as expected.  They will only run properly in an environment with two
- * alarms containers running concurrently and env var ACTIVE set to true in
- * one container and false in the other.  This test also assumes that redis and
+ * alarms containers running concurrently and env var HOST_INDEX set to host0 in
+ * one container and host1 in the other.  This test also assumes that redis and
  * the active endpoint authorization are configured.  For the auth set the
  * ENDPOINT_AUTH env var in your containers to match the testing.auth property
  * found in your whisk.properties.  To configure redis simply set the REDIS_URL
@@ -44,7 +44,7 @@ class AlarmsRedundancyTests
 
     val wskprops = WskProps()
     val wsk = new Wsk
-    var edgeHost = WhiskProperties.getEdgeHost()
+    var edgeHost = WhiskProperties.getEdgeHost
     val auth = WhiskProperties.getBasicAuth
     val user = auth.fst
     val password = auth.snd
@@ -145,7 +145,7 @@ class AlarmsRedundancyTests
                 get(endpointURL)
         assert(response.statusCode() == 200)
         var result = response.body.asString.parseJson.asJsObject
-        JsObject(result.fields - "message") shouldBe expectedResult
+        JsObject(result.fields - "hostMachine") shouldBe expectedResult
     }
 
     override def afterAll() {

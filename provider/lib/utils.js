@@ -1,8 +1,9 @@
 var _ = require('lodash');
 var request = require('request');
 var CronJob = require('cron').CronJob;
-var constants = require('./constants.js');
 var HttpStatus = require('http-status-codes');
+var constants = require('./constants.js');
+
 
 module.exports = function(
   logger,
@@ -14,7 +15,8 @@ module.exports = function(
     this.endpointAuth = process.env.ENDPOINT_AUTH;
     this.routerHost = process.env.ROUTER_HOST || 'localhost';
     this.worker = process.env.WORKER || "worker0";
-    this.host = process.env.ACTIVE !== undefined && process.env.ACTIVE.toLowerCase() === 'false' ? 'host1' : 'host0';
+    this.host = process.env.HOST_INDEX || 'host0';
+    this.hostMachine = process.env.HOST_MACHINE;
     this.activeHost = 'host0'; //default value on init (will be updated for existing redis)
     this.redisClient = redisClient;
     this.redisHash = triggerDB.config.db + '_' + this.worker;
@@ -24,7 +26,6 @@ module.exports = function(
     var retryAttempts = constants.RETRY_ATTEMPTS;
     var ddname = constants.DESIGN_DOC_NAME;
     var filter = constants.FILTER_FUNCTION;
-
     var utils = this;
 
     this.createTrigger = function(triggerIdentifier, newTrigger) {
