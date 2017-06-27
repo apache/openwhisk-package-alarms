@@ -9,6 +9,7 @@ module.exports = function(logger, utils) {
       var response = {
           worker: utils.worker,
           host: utils.host,
+          hostMachine: utils.hostMachine,
           active: utils.host === utils.activeHost
       };
 
@@ -29,9 +30,7 @@ module.exports = function(logger, utils) {
                   .then(() => {
                       response.active = 'swapping';
                       utils.redisClient.publish(utils.redisHash, activeHost);
-                      var msg = 'Active host swap in progress';
-                      logger.info(method, msg);
-                      response.message = msg;
+                      logger.info(method, 'Active host swap in progress');
                       res.send(response);
                   })
                   .catch(err => {
