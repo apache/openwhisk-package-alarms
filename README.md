@@ -1,4 +1,6 @@
 # Using the Alarm package
+
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 [![Build Status](https://travis-ci.org/apache/incubator-openwhisk-package-alarms.svg?branch=master)](https://travis-ci.org/apache/incubator-openwhisk-package-alarms)
 
 The `/whisk.system/alarms` package can be used to fire a trigger at a specified frequency. This is useful for setting up recurring jobs or tasks, such as invoking a system backup action every hour.
@@ -38,8 +40,8 @@ The following is an example of creating a trigger that will be fired once every 
 
 Each generated event will include as parameters the properties specified in the `trigger_payload` value. In this case, each trigger event will have parameters `name=Odin` and `place=Asgard`.
 
-**Note**: The parameter `cron` also supports a custom syntax of six fields, where the first field represents seconds. 
-For more details about using this custom cron syntax, see: https://github.com/ncb000gt/node-cron. 
+**Note**: The parameter `cron` also supports a custom syntax of six fields, where the first field represents seconds.
+For more details about using this custom cron syntax, see: https://github.com/ncb000gt/node-cron.
 Here is an example using six fields notation:
   - `*/30 * * * * *`: every thirty seconds.
 
