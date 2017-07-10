@@ -106,7 +106,7 @@ function createRedisClient() {
             });
 
             client.on("error", function (err) {
-                logger.error(method, 'Error creating redis', err);
+                logger.error(method, 'Error connecting to redis', err);
                 reject(err);
             });
         }
