@@ -360,6 +360,11 @@ module.exports = function(
                     }
                 });
 
+                subscriber.on("error", function (err) {
+                    logger.error(method, 'Error connecting to redis', err);
+                    reject(err);
+                });
+
                 subscriber.subscribe(utils.redisHash);
 
                 redisClient.hgetAsync(utils.redisHash, utils.redisKey)
