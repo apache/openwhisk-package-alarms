@@ -53,7 +53,13 @@ function main(params) {
             .then(() => {
                  return createTrigger(db, triggerID, newTrigger);
             })
-            .then(resolve)
+            .then(() => {
+                resolve({
+                    statusCode: 200,
+                    headers: {'Content-Type': 'application/json'},
+                    body: new Buffer(JSON.stringify({'status': 'success'})).toString('base64'),
+                });
+            })
             .catch(err => {
                 reject(err);
             });
@@ -70,7 +76,13 @@ function main(params) {
             .then(id => {
                 return deleteTrigger(db, id, 0);
             })
-            .then(resolve)
+            .then(() => {
+                resolve({
+                    statusCode: 200,
+                    headers: {'Content-Type': 'application/json'},
+                    body: new Buffer(JSON.stringify({'status': 'success'})).toString('base64'),
+                });
+            })
             .catch(err => {
                 reject(err);
             });
