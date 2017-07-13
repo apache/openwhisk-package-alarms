@@ -51,7 +51,7 @@ function createDatabase(nanop) {
             if (!err) {
                 logger.info(method, 'created trigger database:', databaseName);
             }
-            else {
+            else if (err.statusCode !== 412) {
                 logger.info(method, 'failed to create trigger database:', databaseName, err);
             }
             var db = nanop.db.use(databaseName);
@@ -68,7 +68,7 @@ function createDatabase(nanop) {
                             only_triggers_by_worker: only_triggers_by_worker
                         },
                     }, ddname, function (error, body) {
-                        if (error) {
+                        if (error && error.statusCode !== 409) {
                             reject("filter could not be created: " + error);
                         }
                         resolve(db);
