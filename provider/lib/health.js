@@ -4,10 +4,11 @@ module.exports = function(utils) {
 
     // Health Endpoint
     this.endPoint = '/health';
-    var stats = {triggerCount: Object.keys(utils.triggers).length};
 
     // Health Logic
     this.health = function (req, res) {
+
+        var stats = {triggerCount: Object.keys(utils.triggers).length};
 
         // get all system stats in parallel
         Promise.all([
