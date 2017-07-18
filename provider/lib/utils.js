@@ -271,34 +271,49 @@ module.exports = function(
     this.setupFollow = function(seq) {
         var method = 'setupFollow';
 
-        var feed = triggerDB.follow({ since: seq, include_docs: true, filter: ddname + '/' + filter, query_params: { worker: utils.worker } });
+        try {
+            var feed = triggerDB.follow({
+                since: seq,
+                include_docs: true,
+                filter: ddname + '/' + filter,
+                query_params: {worker: utils.worker}
+            });
 
-        feed.on('change', (change) => {
-            var triggerIdentifier = change.id;
-            var doc = change.doc;
+            feed.on('change', (change) => {
+                var triggerIdentifier = change.id;
+                var doc = change.doc;
 
-            logger.info(method, 'got change for trigger', triggerIdentifier);
+                logger.info(method, 'got change for trigger', triggerIdentifier);
 
-            if (utils.triggers[triggerIdentifier]) {
-                if (doc.status && doc.status.active === false) {
-                   utils.deleteTrigger(triggerIdentifier);
+                if (utils.triggers[triggerIdentifier]) {
+                    if (doc.status && doc.status.active === false) {
+                        utils.deleteTrigger(triggerIdentifier);
+                    }
                 }
-            }
-            else {
-                //ignore changes to disabled triggers
-                if (!doc.status || doc.status.active === true) {
-                    utils.createTrigger(triggerIdentifier, doc)
-                    .then(triggerIdentifier => {
-                        logger.info(method, triggerIdentifier, 'created successfully');
-                    }).catch(err => {
-                        var message = 'Automatically disabled after receiving exception on create trigger: ' + err;
-                        utils.disableTrigger(triggerIdentifier, undefined, message);
-                        logger.error(method, 'Disabled trigger', triggerIdentifier, 'due to exception:', err);
-                    });
+                else {
+                    //ignore changes to disabled triggers
+                    if (!doc.status || doc.status.active === true) {
+                        utils.createTrigger(triggerIdentifier, doc)
+                        .then(triggerIdentifier => {
+                            logger.info(method, triggerIdentifier, 'created successfully');
+                        }).catch(err => {
+                            var message = 'Automatically disabled after receiving exception on create trigger: ' + err;
+                            utils.disableTrigger(triggerIdentifier, undefined, message);
+                            logger.error(method, 'Disabled trigger', triggerIdentifier, 'due to exception:', err);
+                        });
+                    }
                 }
-            }
-        });
-        feed.follow();
+            });
+
+            feed.on('error', function (err) {
+                logger.error(method, err);
+            });
+
+            feed.follow();
+        }
+        catch (err) {
+            logger.error(method, err);
+        }
     };
 
     this.authorize = function(req, res, next) {
