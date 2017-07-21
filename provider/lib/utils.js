@@ -189,7 +189,9 @@ module.exports = function(
                     }
                 }
                 else {
-                    logger.error(method, 'could not find', triggerIdentifier, 'in database');
+                    logger.info(method, 'could not find', triggerIdentifier, 'in database');
+                    //make sure it is removed from memory as well
+                    utils.deleteTrigger(triggerIdentifier);
                 }
             });
         }
@@ -198,11 +200,13 @@ module.exports = function(
     this.deleteTrigger = function(triggerIdentifier) {
         var method = 'deleteTrigger';
 
-        if (utils.triggers[triggerIdentifier].cronHandle) {
-            utils.triggers[triggerIdentifier].cronHandle.stop();
+        if (utils.triggers[triggerIdentifier]) {
+            if (utils.triggers[triggerIdentifier].cronHandle) {
+                utils.triggers[triggerIdentifier].cronHandle.stop();
+            }
+            delete utils.triggers[triggerIdentifier];
+            logger.info(method, 'trigger', triggerIdentifier, 'successfully deleted from memory');
         }
-        delete utils.triggers[triggerIdentifier];
-        logger.info(method, 'trigger', triggerIdentifier, 'successfully deleted from memory');
     };
 
     this.getTriggerIdentifier = function(apikey, namespace, name) {
