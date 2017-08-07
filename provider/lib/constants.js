@@ -3,8 +3,9 @@ const DEFAULT_MAX_TRIGGERS = -1;
 const RETRY_ATTEMPTS = 10;
 const RETRY_DELAY = 1000; //in milliseconds
 const REDIS_KEY = 'active';
-const DESIGN_DOC_NAME = 'triggers';
-const FILTER_FUNCTION = 'only_triggers_by_worker';
+const FILTERS_DESIGN_DOC = 'triggerFilters';
+const VIEWS_DESIGN_DOC = 'triggerViews';
+const TRIGGERS_BY_WORKER = 'triggers_by_worker';
 
 
 module.exports = {
@@ -13,6 +14,7 @@ module.exports = {
     RETRY_ATTEMPTS: RETRY_ATTEMPTS,
     RETRY_DELAY: RETRY_DELAY,
     REDIS_KEY: REDIS_KEY,
-    DESIGN_DOC_NAME: DESIGN_DOC_NAME,
-    FILTER_FUNCTION: FILTER_FUNCTION
+    FILTERS_DESIGN_DOC: FILTERS_DESIGN_DOC,
+    VIEWS_DESIGN_DOC: VIEWS_DESIGN_DOC,
+    TRIGGERS_BY_WORKER: TRIGGERS_BY_WORKER
 };
