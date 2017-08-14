@@ -63,7 +63,7 @@ function createDatabase() {
                     views: {
                         triggers_by_worker: {
                             map: function (doc) {
-                                if (doc.maxTriggers) {
+                                if (doc.maxTriggers && (!doc.status || doc.status.active === true)) {
                                     emit(doc.worker || 'worker0', 1);
                                 }
                             }.toString(),
