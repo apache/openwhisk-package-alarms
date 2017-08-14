@@ -225,7 +225,7 @@ module.exports = function(
                     var triggerIdentifier = trigger.id;
                     var doc = trigger.doc;
 
-                    if ((!doc.status || doc.status.active === true) && !(triggerIdentifier in utils.triggers)) {
+                    if (!(triggerIdentifier in utils.triggers)) {
                         //check if trigger still exists in whisk db
                         var namespace = doc.namespace;
                         var name = doc.name;
