@@ -3,6 +3,8 @@ var moment = require('moment');
 var winston = require('winston');
 var safeStringify = require('json-stringify-safe');
 
+var apiKeyRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-zA-Z]{64}/g;
+
 var logger = new winston.Logger({
     transports: [
         new winston.transports.Console({
@@ -14,6 +16,11 @@ var logger = new winston.Logger({
                 return '[' + options.timestamp() +'] ['+ options.level.toUpperCase() +'] [??] [alarmsTrigger] ' +  options.message;
             }
         })
+    ],
+    filters: [
+        function maskAPIKeys(level, msg) {
+            return msg.replace(apiKeyRegex, 'xxxxxxxx');
+        }
     ]
 });
 
