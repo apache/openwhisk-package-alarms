@@ -324,7 +324,9 @@ module.exports = function(
         if (utils.endpointAuth) {
 
             if (!req.headers.authorization) {
-                return utils.sendError(method, HttpStatus.BAD_REQUEST, 'Malformed request, authentication header expected', res);
+                res.set('www-authenticate', 'Basic realm="Private"');
+                res.status(HttpStatus.UNAUTHORIZED);
+                return res.send('');
             }
 
             var parts = req.headers.authorization.split(' ');
