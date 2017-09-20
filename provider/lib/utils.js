@@ -164,36 +164,33 @@ module.exports = function(
     this.disableTrigger = function(triggerIdentifier, statusCode, message) {
         var method = 'disableTrigger';
 
-        //only active/master provider should update the database
-        if (utils.activeHost === utils.host) {
-            triggerDB.get(triggerIdentifier, function (err, existing) {
-                if (!err) {
-                    if (!existing.status || existing.status.active === true) {
-                        var updatedTrigger = existing;
-                        var status = {
-                            'active': false,
-                            'dateChanged': new Date().toISOString(),
-                            'reason': {'kind': 'AUTO', 'statusCode': statusCode, 'message': message}
-                        };
-                        updatedTrigger.status = status;
+        triggerDB.get(triggerIdentifier, function (err, existing) {
+            if (!err) {
+                if (!existing.status || existing.status.active === true) {
+                    var updatedTrigger = existing;
+                    var status = {
+                        'active': false,
+                        'dateChanged': new Date().toISOString(),
+                        'reason': {'kind': 'AUTO', 'statusCode': statusCode, 'message': message}
+                    };
+                    updatedTrigger.status = status;
 
-                        triggerDB.insert(updatedTrigger, triggerIdentifier, function (err) {
-                            if (err) {
-                                logger.error(method, 'there was an error while disabling', triggerIdentifier, 'in database.', err);
-                            }
-                            else {
-                                logger.info(method, 'trigger', triggerIdentifier, 'successfully disabled in database');
-                            }
-                        });
-                    }
+                    triggerDB.insert(updatedTrigger, triggerIdentifier, function (err) {
+                        if (err) {
+                            logger.error(method, 'there was an error while disabling', triggerIdentifier, 'in database.', err);
+                        }
+                        else {
+                            logger.info(method, 'trigger', triggerIdentifier, 'successfully disabled in database');
+                        }
+                    });
                 }
-                else {
-                    logger.info(method, 'could not find', triggerIdentifier, 'in database');
-                    //make sure it is removed from memory as well
-                    utils.deleteTrigger(triggerIdentifier);
-                }
-            });
-        }
+            }
+            else {
+                logger.info(method, 'could not find', triggerIdentifier, 'in database');
+                //make sure it is removed from memory as well
+                utils.deleteTrigger(triggerIdentifier);
+            }
+        });
     };
 
     this.deleteTrigger = function(triggerIdentifier) {

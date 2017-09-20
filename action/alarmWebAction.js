@@ -17,6 +17,7 @@ function main(params) {
 
     var nano = require('nano')(params.DB_URL);
     var db = nano.db.use(params.DB_NAME);
+    var workers = params.workers instanceof Array ? params.workers : [];
 
     if (params.__ow_method === "put") {
 
@@ -44,20 +45,25 @@ function main(params) {
             maxTriggers: params.maxTriggers || -1,
             status: {
                 'active': true,
-                'dateChanged': new Date().toISOString(),
+                'dateChanged': new Date().toISOString()
             }
         };
 
         return new Promise(function (resolve, reject) {
             verifyTriggerAuth(triggerURL, params.authKey, false)
             .then(() => {
-                 return createTrigger(db, triggerID, newTrigger);
+                return getWorkerID(db, workers);
+            })
+            .then((worker) => {
+                console.log('trigger will be assigned to worker ' + worker);
+                newTrigger.worker = worker;
+                return createTrigger(db, triggerID, newTrigger);
             })
             .then(() => {
                 resolve({
                     statusCode: 200,
                     headers: {'Content-Type': 'application/json'},
-                    body: new Buffer(JSON.stringify({'status': 'success'})).toString('base64'),
+                    body: new Buffer(JSON.stringify({'status': 'success'})).toString('base64')
                 });
             })
             .catch(err => {
@@ -80,7 +86,7 @@ function main(params) {
                 resolve({
                     statusCode: 200,
                     headers: {'Content-Type': 'application/json'},
-                    body: new Buffer(JSON.stringify({'status': 'success'})).toString('base64'),
+                    body: new Buffer(JSON.stringify({'status': 'success'})).toString('base64')
                 });
             })
             .catch(err => {
@@ -91,6 +97,44 @@ function main(params) {
     else {
         return sendError(400, 'lifecycleEvent must be CREATE or DELETE');
     }
+}
+
+function getWorkerID(db, availabeWorkers) {
+
+    return new Promise((resolve, reject) => {
+        var workerID = availabeWorkers[0] || 'worker0';
+
+        if (availabeWorkers.length > 1) {
+            db.view('triggerViews', 'triggers_by_worker', {reduce: true, group: true}, function (err, body) {
+                if (!err) {
+                    var triggersByWorker = {};
+
+                    availabeWorkers.forEach(worker => {
+                        triggersByWorker[worker] = 0;
+                    });
+
+                    body.rows.forEach(row => {
+                        if (row.key in triggersByWorker) {
+                            triggersByWorker[row.key] = row.value;
+                        }
+                    });
+
+                    // find which worker has the least number of assigned triggers
+                    for (var worker in triggersByWorker) {
+                        if (triggersByWorker[worker] < triggersByWorker[workerID]) {
+                            workerID = worker;
+                        }
+                    }
+                    resolve(workerID);
+                } else {
+                    reject(err);
+                }
+            });
+        }
+        else {
+            resolve(workerID);
+        }
+    });
 }
 
 function createTrigger(triggerDB, triggerID, newTrigger) {
@@ -124,7 +168,8 @@ function updateTrigger(triggerDB, triggerID, retryCount) {
                                 updateTrigger(triggerDB, triggerID, (retryCount + 1))
                                 .then(id => {
                                     resolve(id);
-                                }).catch(err => {
+                                })
+                                .catch(err => {
                                     reject(err);
                                 });
                             }, 1000);
@@ -146,7 +191,8 @@ function updateTrigger(triggerDB, triggerID, retryCount) {
                     updateTrigger(triggerDB, id, (retryCount + 1))
                     .then(id => {
                         resolve(id);
-                    }).catch(err => {
+                    })
+                    .catch(err => {
                         reject(err);
                     });
                 }
@@ -227,7 +273,7 @@ function sendError(statusCode, error, message) {
     return {
         statusCode: statusCode,
         headers: { 'Content-Type': 'application/json' },
-        body: new Buffer(JSON.stringify(params)).toString('base64'),
+        body: new Buffer(JSON.stringify(params)).toString('base64')
     };
 }
 
