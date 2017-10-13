@@ -2,7 +2,14 @@ var request = require('request');
 
 function main(msg) {
 
+    let eventMap = {
+        CREATE: 'put',
+        READ: 'get',
+        // UPDATE: 'put',
+        DELETE: 'delete'
+    }
     // for creation -> CREATE
+    // for reading -> READ
     // for deletion -> DELETE
     var lifecycleEvent = msg.lifecycleEvent;
 
@@ -11,12 +18,11 @@ function main(msg) {
 
     var url = `https://${endpoint}/api/v1/web/whisk.system/alarmsWeb/alarmWebAction.http`;
 
-    if (lifecycleEvent !== 'CREATE' && lifecycleEvent !== 'DELETE') {
-        return Promise.reject('lifecycleEvent must be CREATE or DELETE');
-    }
-    else {
-        var method = lifecycleEvent === 'CREATE' ? 'put' : 'delete';
+    if (lifecycleEvent in eventMap) {
+        var method = eventMap[lifecycleEvent]
         return requestHelper(url, webparams, method);
+    } else {
+        return Promise.reject('unsupported lifecycleEvent');
     }
 }
 
@@ -32,7 +38,7 @@ function requestHelper(url, input, method) {
         }, function(error, response, body) {
 
             if (!error && response.statusCode === 200) {
-                resolve();
+                resolve(body);
             }
             else {
                 if (response) {

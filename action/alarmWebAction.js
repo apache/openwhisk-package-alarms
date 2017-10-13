@@ -71,8 +71,34 @@ function main(params) {
             });
         });
 
-    }
-    else if (params.__ow_method === "delete") {
+    } else if (params.__ow_method === "get") {
+        return new Promise(function (resolve, reject) {
+            verifyTriggerAuth(triggerURL, params.authKey, false)
+            .then(() => {
+                return getTrigger(db, triggerID);
+            })
+            .then(doc => {
+                var body = {
+                    config: {
+                        name: doc.name,
+                        namespace: doc.namespace,
+                        cron: doc.cron,
+                        payload: doc.payload,
+                        maxTriggers: doc.maxTriggers
+                    },
+                    status: doc.status
+                };
+                resolve({
+                    statusCode: 200,
+                    headers: {'Content-Type': 'application/json'},
+                    body: new Buffer(JSON.stringify(body)).toString('base64')
+                });
+            })
+            .catch(err => {
+                reject(err);
+            });
+        })
+    } else if (params.__ow_method === "delete") {
 
         return new Promise(function (resolve, reject) {
             verifyTriggerAuth(triggerURL, params.authKey, true)
@@ -95,7 +121,7 @@ function main(params) {
         });
     }
     else {
-        return sendError(400, 'lifecycleEvent must be CREATE or DELETE');
+        return sendError(400, 'unsupported lifecycleEvent');
     }
 }
 
@@ -147,6 +173,20 @@ function createTrigger(triggerDB, triggerID, newTrigger) {
             }
             else {
                 reject(sendError(err.statusCode, 'error creating alarm trigger.', err.message));
+            }
+        });
+    });
+}
+
+function getTrigger(triggerDB, triggerID) {
+    
+    return new Promise(function(resolve, reject) {
+
+        triggerDB.get(triggerID, function (err, existing) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(existing);
             }
         });
     });
