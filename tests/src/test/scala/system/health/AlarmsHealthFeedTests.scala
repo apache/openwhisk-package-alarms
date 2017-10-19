@@ -66,7 +66,7 @@ class AlarmsHealthFeedTests
             feedCreationResult.stdout should include("ok")
 
             println("waiting for triggers")
-            val activations = wsk.activation.pollFor(N = 5, Some(triggerName)).length
+            val activations = wsk.activation.pollFor(N = 5, Some(triggerName), retries = 30).length
             println(s"Found activation size (should be at least 5): $activations")
             activations should be >= 5
 
@@ -74,7 +74,7 @@ class AlarmsHealthFeedTests
             wsk.trigger.delete(triggerName)
 
             // get activation list after delete of the trigger
-            val activationsAfterDelete = wsk.activation.pollFor(N = 20, Some(triggerName), retries = 20).length
+            val activationsAfterDelete = wsk.activation.pollFor(N = 100, Some(triggerName), retries = 30).length
             val now = Instant.now(Clock.systemUTC())
             println(s"Found activation size after delete ($now): $activationsAfterDelete")
 
@@ -135,13 +135,12 @@ class AlarmsHealthFeedTests
 
             // create whisk stuff
             println(s"Creating trigger: $triggerName")
-            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = true) {
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
                         "trigger_payload" -> "alarmTest".toJson,
                         "cron" -> "* * * * * *".toJson,
-                        "maxTriggers" -> -1.toJson),
-                expectedExitCode = 0)
+                        "maxTriggers" -> (-1).toJson))
             }
             feedCreationResult.stderr should not include("error")
     }
