@@ -71,7 +71,7 @@ function main(params) {
             });
         });
 
-    } 
+    }
     else if (params.__ow_method === "get") {
         return new Promise(function (resolve, reject) {
             verifyTriggerAuth(triggerURL, params.authKey, false)
@@ -99,7 +99,7 @@ function main(params) {
                 reject(err);
             });
         });
-    } 
+    }
     else if (params.__ow_method === "delete") {
 
         return new Promise(function (resolve, reject) {
@@ -181,7 +181,7 @@ function createTrigger(triggerDB, triggerID, newTrigger) {
 }
 
 function getTrigger(triggerDB, triggerID) {
-    
+
     return new Promise(function(resolve, reject) {
 
         triggerDB.get(triggerID, function (err, existing) {
