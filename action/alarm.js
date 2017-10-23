@@ -7,7 +7,7 @@ function main(msg) {
         READ: 'get',
         // UPDATE: 'put',
         DELETE: 'delete'
-    }
+    };
     // for creation -> CREATE
     // for reading -> READ
     // for deletion -> DELETE
@@ -19,7 +19,7 @@ function main(msg) {
     var url = `https://${endpoint}/api/v1/web/whisk.system/alarmsWeb/alarmWebAction.http`;
 
     if (lifecycleEvent in eventMap) {
-        var method = eventMap[lifecycleEvent]
+        var method = eventMap[lifecycleEvent];
         return requestHelper(url, webparams, method);
     } else {
         return Promise.reject('unsupported lifecycleEvent');
