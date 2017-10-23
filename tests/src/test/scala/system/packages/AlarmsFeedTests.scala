@@ -102,66 +102,66 @@ class AlarmsFeedTests
     }
 
     it should "return correct status and configuration" in withAssetCleaner(wskprops) {
-      val currentTime = s"${System.currentTimeMillis}"
+        val currentTime = s"${System.currentTimeMillis}"
 
-      (wp, assetHelper) =>
-        implicit val wskProps = wp
-        val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
-        val packageName = "dummyAlarmsPackage"
+        (wp, assetHelper) =>
+            implicit val wskProps = wp
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
 
-        // the package alarms should be there
-        val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
-        println("fetched package alarms")
-        packageGetResult.stdout should include("ok")
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
 
-        // create package binding
-        assetHelper.withCleaner(wsk.pkg, packageName) {
-          (pkg, name) => pkg.bind("/whisk.system/alarms", name)
-        }
-
-        val triggerPayload = JsObject(
-          "test" -> JsString("alarmsTest")
-        )
-        val cronString = "* * * * * *"
-        val maxTriggers = -1
-
-        // create whisk stuff
-        val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
-          (trigger, name) =>
-            trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
-              "trigger_payload" -> triggerPayload,
-              "cron" -> cronString.toJson,
-              "maxTriggers" -> maxTriggers.toJson))
-        }
-        feedCreationResult.stdout should include("ok")
-
-        val actionName = s"$packageName/alarm"
-        val run = wsk.action.invoke(actionName, parameters = Map(
-          "triggerName" -> triggerName.toJson,
-          "lifecycleEvent" -> "READ".toJson,
-          "authKey" -> wskProps.authKey.toJson
-        ))
-
-        withActivation(wsk.activation, run) {
-          activation =>
-            activation.response.success shouldBe true
-
-            inside (activation.response.result) {
-              case Some(result) =>
-                val config = result.getFields("config").head.asInstanceOf[JsObject].fields
-                val status = result.getFields("status").head.asInstanceOf[JsObject].fields
-
-                config should contain("name" -> triggerName.toJson)
-                config should contain("cron" -> cronString.toJson)
-                config should contain("payload" -> triggerPayload)
-                config should contain("maxTriggers" -> maxTriggers.toJson)
-                config should contain key "namespace"
-
-                status should contain("active" -> true.toJson)
-                status should contain key "dateChanged"
-                status should not(contain key "reason")
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
             }
-        }
+
+            val triggerPayload = JsObject(
+                "test" -> JsString("alarmsTest")
+            )
+            val cronString = "* * * * * *"
+            val maxTriggers = -1
+
+            // create whisk stuff
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
+                        "trigger_payload" -> triggerPayload,
+                        "cron" -> cronString.toJson,
+                        "maxTriggers" -> maxTriggers.toJson))
+            }
+            feedCreationResult.stdout should include("ok")
+
+            val actionName = s"$packageName/alarm"
+            val run = wsk.action.invoke(actionName, parameters = Map(
+                "triggerName" -> triggerName.toJson,
+                "lifecycleEvent" -> "READ".toJson,
+                "authKey" -> wskProps.authKey.toJson
+            ))
+
+            withActivation(wsk.activation, run) {
+                activation =>
+                    activation.response.success shouldBe true
+
+                    inside (activation.response.result) {
+                        case Some(result) =>
+                            val config = result.getFields("config").head.asInstanceOf[JsObject].fields
+                            val status = result.getFields("status").head.asInstanceOf[JsObject].fields
+
+                            config should contain("name" -> triggerName.toJson)
+                            config should contain("cron" -> cronString.toJson)
+                            config should contain("payload" -> triggerPayload)
+                            config should contain("maxTriggers" -> maxTriggers.toJson)
+                            config should contain key "namespace"
+
+                            status should contain("active" -> true.toJson)
+                            status should contain key "dateChanged"
+                            status should not(contain key "reason")
+                    }
+            }
 
     }
 }
