@@ -71,7 +71,8 @@ function main(params) {
             });
         });
 
-    } else if (params.__ow_method === "get") {
+    } 
+    else if (params.__ow_method === "get") {
         return new Promise(function (resolve, reject) {
             verifyTriggerAuth(triggerURL, params.authKey, false)
             .then(() => {
