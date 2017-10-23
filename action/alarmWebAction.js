@@ -97,8 +97,9 @@ function main(params) {
             .catch(err => {
                 reject(err);
             });
-        })
-    } else if (params.__ow_method === "delete") {
+        });
+    } 
+    else if (params.__ow_method === "delete") {
 
         return new Promise(function (resolve, reject) {
             verifyTriggerAuth(triggerURL, params.authKey, true)
