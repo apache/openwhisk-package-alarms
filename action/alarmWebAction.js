@@ -180,13 +180,25 @@ function createTrigger(triggerDB, triggerID, newTrigger) {
     });
 }
 
-function getTrigger(triggerDB, triggerID) {
+function getTrigger(triggerDB, triggerID, retry = true) {
 
     return new Promise(function(resolve, reject) {
 
         triggerDB.get(triggerID, function (err, existing) {
             if (err) {
-                reject(err);
+                if (retry) {
+                    var parts = triggerID.split('/');
+                    var id = parts[0] + '/_/' + parts[2];
+                    getTrigger(triggerDB, id, false)
+                    .then(doc => {
+                        resolve(doc);
+                    })
+                    .catch(err => {
+                        reject(err);
+                    });
+                } else {
+                    reject(sendError(err.statusCode, 'could not find the trigger in the database'));
+                }
             } else {
                 resolve(existing);
             }
