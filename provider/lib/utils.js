@@ -170,7 +170,7 @@ module.exports = function(
                     var updatedTrigger = existing;
                     var status = {
                         'active': false,
-                        'dateChanged': new Date().toISOString(),
+                        'dateChanged': Date.now(),
                         'reason': {'kind': 'AUTO', 'statusCode': statusCode, 'message': message}
                     };
                     updatedTrigger.status = status;

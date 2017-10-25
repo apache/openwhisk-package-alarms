@@ -45,7 +45,7 @@ function main(params) {
             maxTriggers: params.maxTriggers || -1,
             status: {
                 'active': true,
-                'dateChanged': new Date().toISOString()
+                'dateChanged': Date.now()
             }
         };
 
