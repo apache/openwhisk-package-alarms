@@ -1,5 +1,6 @@
 var request = require('request');
 var CronJob = require('cron').CronJob;
+var moment = require('moment');
 
 function main(params) {
 
@@ -84,10 +85,14 @@ function main(params) {
                         name: doc.name,
                         namespace: doc.namespace,
                         cron: doc.cron,
-                        payload: doc.payload,
-                        maxTriggers: doc.maxTriggers
+                        payload: doc.payload
                     },
-                    status: doc.status
+                    status: {
+                        active: doc.status.active,
+                        dateChanged: moment(doc.status.dateChanged).utc().valueOf(),
+                        dateChangedISO: moment(doc.status.dateChanged).utc().format(),
+                        reason: doc.status.reason
+                    }
                 };
                 resolve({
                     statusCode: 200,

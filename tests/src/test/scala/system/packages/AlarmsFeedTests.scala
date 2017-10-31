@@ -130,8 +130,7 @@ class AlarmsFeedTests
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
                         "trigger_payload" -> triggerPayload,
-                        "cron" -> cronString.toJson,
-                        "maxTriggers" -> maxTriggers.toJson))
+                        "cron" -> cronString.toJson))
             }
             feedCreationResult.stdout should include("ok")
 
@@ -154,11 +153,11 @@ class AlarmsFeedTests
                             config should contain("name" -> triggerName.toJson)
                             config should contain("cron" -> cronString.toJson)
                             config should contain("payload" -> triggerPayload)
-                            config should contain("maxTriggers" -> maxTriggers.toJson)
                             config should contain key "namespace"
 
                             status should contain("active" -> true.toJson)
                             status should contain key "dateChanged"
+                            status should contain key "dateChangedISO"
                             status should not(contain key "reason")
                     }
             }
