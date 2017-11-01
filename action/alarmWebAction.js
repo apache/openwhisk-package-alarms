@@ -1,5 +1,6 @@
 var request = require('request');
 var CronJob = require('cron').CronJob;
+var moment = require('moment');
 
 function main(params) {
 
@@ -45,7 +46,7 @@ function main(params) {
             maxTriggers: params.maxTriggers || -1,
             status: {
                 'active': true,
-                'dateChanged': new Date().toISOString()
+                'dateChanged': Date.now()
             }
         };
 
@@ -72,6 +73,38 @@ function main(params) {
         });
 
     }
+    else if (params.__ow_method === "get") {
+        return new Promise(function (resolve, reject) {
+            verifyTriggerAuth(triggerURL, params.authKey, false)
+            .then(() => {
+                return getTrigger(db, triggerID);
+            })
+            .then(doc => {
+                var body = {
+                    config: {
+                        name: doc.name,
+                        namespace: doc.namespace,
+                        cron: doc.cron,
+                        payload: doc.payload
+                    },
+                    status: {
+                        active: doc.status.active,
+                        dateChanged: moment(doc.status.dateChanged).utc().valueOf(),
+                        dateChangedISO: moment(doc.status.dateChanged).utc().format(),
+                        reason: doc.status.reason
+                    }
+                };
+                resolve({
+                    statusCode: 200,
+                    headers: {'Content-Type': 'application/json'},
+                    body: new Buffer(JSON.stringify(body)).toString('base64')
+                });
+            })
+            .catch(err => {
+                reject(err);
+            });
+        });
+    }
     else if (params.__ow_method === "delete") {
 
         return new Promise(function (resolve, reject) {
@@ -95,7 +128,7 @@ function main(params) {
         });
     }
     else {
-        return sendError(400, 'lifecycleEvent must be CREATE or DELETE');
+        return sendError(400, 'unsupported lifecycleEvent');
     }
 }
 
@@ -147,6 +180,32 @@ function createTrigger(triggerDB, triggerID, newTrigger) {
             }
             else {
                 reject(sendError(err.statusCode, 'error creating alarm trigger.', err.message));
+            }
+        });
+    });
+}
+
+function getTrigger(triggerDB, triggerID, retry = true) {
+
+    return new Promise(function(resolve, reject) {
+
+        triggerDB.get(triggerID, function (err, existing) {
+            if (err) {
+                if (retry) {
+                    var parts = triggerID.split('/');
+                    var id = parts[0] + '/_/' + parts[2];
+                    getTrigger(triggerDB, id, false)
+                    .then(doc => {
+                        resolve(doc);
+                    })
+                    .catch(err => {
+                        reject(err);
+                    });
+                } else {
+                    reject(sendError(err.statusCode, 'could not find the trigger in the database'));
+                }
+            } else {
+                resolve(existing);
             }
         });
     });
