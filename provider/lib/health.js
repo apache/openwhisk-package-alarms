@@ -1,4 +1,5 @@
 var si = require('systeminformation');
+var v8 = require('v8');
 
 module.exports = function(utils) {
 
@@ -24,6 +25,8 @@ module.exports = function(utils) {
             stats.disk = results[2];
             stats.network = results[3];
             stats.apiHostLatency = results[4];
+            stats.heapStatistics = v8.getHeapStatistics();
+            stats.heapSpaceStatistics =v8.getHeapSpaceStatistics();
             res.send(stats);
         })
         .catch(error => {
