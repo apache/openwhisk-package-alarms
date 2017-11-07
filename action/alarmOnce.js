@@ -15,6 +15,7 @@ function main(msg) {
 
     var endpoint = msg.apihost;
     var webparams = common.createWebParams(msg);
+    webparams.fireOnce = true;
 
     var url = `https://${endpoint}/api/v1/web/whisk.system/alarmsWeb/alarmWebAction.http`;
 

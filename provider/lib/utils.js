@@ -1,9 +1,9 @@
 var _ = require('lodash');
 var request = require('request');
-var CronJob = require('cron').CronJob;
 var HttpStatus = require('http-status-codes');
 var constants = require('./constants.js');
-
+var DateAlarm = require('./dateAlarm.js');
+var CronAlarm = require('./cronAlarm.js');
 
 module.exports = function(
   logger,
@@ -32,42 +32,28 @@ module.exports = function(
     this.createTrigger = function(triggerIdentifier, newTrigger) {
         var method = 'createTrigger';
 
-        try {
-            return new Promise(function(resolve, reject) {
-
-                var cronHandle = new CronJob(newTrigger.cron,
-                    function onTick() {
-                        if (utils.activeHost === utils.host) {
-                            var triggerHandle = utils.triggers[triggerIdentifier];
-                            if (triggerHandle && (triggerHandle.maxTriggers === -1 || triggerHandle.triggersLeft > 0)) {
-                                try {
-                                    utils.fireTrigger(newTrigger.namespace, newTrigger.name, newTrigger.payload, newTrigger.apikey);
-                                } catch (e) {
-                                    logger.error(method, 'Exception occurred while firing trigger', triggerIdentifier, e);
-                                }
-                            }
-                        }
+        var callback = function onTick() {
+            if (utils.activeHost === utils.host) {
+                var triggerHandle = utils.triggers[triggerIdentifier];
+                if (triggerHandle && (!triggerHandle.maxTriggers || triggerHandle.maxTriggers === -1 || triggerHandle.triggersLeft > 0)) {
+                    try {
+                        utils.fireTrigger(newTrigger.namespace, newTrigger.name, newTrigger.payload, newTrigger.apikey);
+                    } catch (e) {
+                        logger.error(method, 'Exception occurred while firing trigger', triggerIdentifier, e);
                     }
-                );
-                logger.info(method, triggerIdentifier, 'starting cron job');
-                cronHandle.start();
+                }
+            }
+        };
 
-                var maxTriggers = newTrigger.maxTriggers || constants.DEFAULT_MAX_TRIGGERS;
-
-                utils.triggers[triggerIdentifier] = {
-                    cron: newTrigger.cron,
-                    cronHandle: cronHandle,
-                    triggersLeft: maxTriggers,
-                    maxTriggers: maxTriggers,
-                    apikey: newTrigger.apikey,
-                    name: newTrigger.name,
-                    namespace: newTrigger.namespace
-                };
-                resolve(triggerIdentifier);
-            });
-        } catch (err) {
-            return Promise.reject(err);
+        var alarm;
+        if (newTrigger.date) {
+            alarm = new DateAlarm(logger, newTrigger);
         }
+        else {
+            alarm = new CronAlarm(logger, newTrigger);
+        }
+
+        return alarm.scheduleAlarm(triggerIdentifier, callback);
     };
 
     this.fireTrigger = function(namespace, name, payload, apikey) {
@@ -83,13 +69,11 @@ module.exports = function(
         utils.postTrigger(dataTrigger, payload, uri, auth, 0)
         .then(triggerId => {
             logger.info(method, 'Trigger', triggerId, 'was successfully fired');
-            if (dataTrigger.triggersLeft === 0) {
-                utils.disableTrigger(triggerIdentifier, undefined, 'Automatically disabled after reaching max triggers');
-                logger.warn(method, 'no more triggers left, disabled', triggerIdentifier);
-            }
+            utils.disableExtinctTriggers(triggerIdentifier, dataTrigger);
         })
         .catch(err => {
             logger.error(method, err);
+            utils.disableExtinctTriggers(triggerIdentifier, dataTrigger);
         });
     };
 
@@ -99,7 +83,7 @@ module.exports = function(
         return new Promise(function(resolve, reject) {
 
             // only manage trigger fires if they are not infinite
-            if (dataTrigger.maxTriggers !== -1) {
+            if (dataTrigger.maxTriggers && dataTrigger.maxTriggers !== -1) {
                 dataTrigger.triggersLeft--;
             }
 
@@ -118,7 +102,7 @@ module.exports = function(
 
                     if (error || response.statusCode >= 400) {
                         // only manage trigger fires if they are not infinite
-                        if (dataTrigger.maxTriggers !== -1) {
+                        if (dataTrigger.maxTriggers && dataTrigger.maxTriggers !== -1) {
                             dataTrigger.triggersLeft++;
                         }
                         logger.error(method, 'there was an error invoking', triggerIdentifier, response ? response.statusCode : error);
@@ -145,7 +129,7 @@ module.exports = function(
                             }
                         }
                     } else {
-                        logger.info(method, 'fired', triggerIdentifier, dataTrigger.triggersLeft, 'triggers left');
+                        logger.info(method, 'fired', triggerIdentifier);
                         resolve(triggerIdentifier);
                     }
                 }
@@ -159,6 +143,20 @@ module.exports = function(
     this.shouldDisableTrigger = function(statusCode) {
         return ((statusCode >= 400 && statusCode < 500) &&
             [HttpStatus.REQUEST_TIMEOUT, HttpStatus.TOO_MANY_REQUESTS].indexOf(statusCode) === -1);
+    };
+
+    this.disableExtinctTriggers = function(triggerIdentifier, dataTrigger) {
+        var method = 'disableExtinctTriggers';
+
+        if (dataTrigger.date) {
+            utils.disableTrigger(triggerIdentifier, undefined, 'Automatically disabled after firing once');
+            logger.info(method, 'the fire once date has expired, disabled', triggerIdentifier);
+        }
+        else if (dataTrigger.maxTriggers && dataTrigger.triggersLeft === 0) {
+            utils.disableTrigger(triggerIdentifier, undefined, 'Automatically disabled after reaching max triggers');
+            logger.warn(method, 'no more triggers left, disabled', triggerIdentifier);
+        }
+
     };
 
     this.disableTrigger = function(triggerIdentifier, statusCode, message) {
@@ -248,7 +246,8 @@ module.exports = function(
                             }
                             else {
                                 utils.createTrigger(triggerIdentifier, doc)
-                                .then(triggerIdentifier => {
+                                .then(cachedTrigger => {
+                                    utils.triggers[triggerIdentifier] = cachedTrigger;
                                     logger.info(method, triggerIdentifier, 'created successfully');
                                 })
                                 .catch(err => {
@@ -292,7 +291,8 @@ module.exports = function(
                     //ignore changes to disabled triggers
                     if (!doc.status || doc.status.active === true) {
                         utils.createTrigger(triggerIdentifier, doc)
-                        .then(triggerIdentifier => {
+                        .then(cachedTrigger => {
+                            utils.triggers[triggerIdentifier] = cachedTrigger;
                             logger.info(method, triggerIdentifier, 'created successfully');
                         })
                         .catch(err => {
