@@ -6,7 +6,7 @@
   "license": "ISC",
   "dependencies": {
     "body-parser": "^1.15.0",
-    "cron": "^1.1.0",
+    "node-schedule": "^1.2.5",
     "express": "^4.13.4",
     "lodash": "^4.5.0",
     "nano": "6.4.2",
