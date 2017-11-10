@@ -24,7 +24,7 @@ import common.Wsk
 import common.WskProps
 import common.WskTestHelpers
 import spray.json.DefaultJsonProtocol.IntJsonFormat
-import spray.json.DefaultJsonProtocol.StringJsonFormat
+import spray.json.DefaultJsonProtocol.{LongJsonFormat, StringJsonFormat}
 import spray.json.DefaultJsonProtocol.BooleanJsonFormat
 import spray.json.{JsObject, JsString, pimpAny}
 
@@ -42,32 +42,6 @@ class AlarmsFeedTests
     val wsk = new Wsk
 
     behavior of "Alarms trigger service"
-
-    it should "fire periodic trigger using cron feed using _ namespace" in withAssetCleaner(WskProps()) {
-        (wp, assetHelper) =>
-        implicit val wskprops = wp // shadow global props and make implicit
-        val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
-
-        // the package alarms should be there
-        val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
-        println("fetched package alarms")
-        packageGetResult.stdout should include("ok")
-
-        // create whisk stuff
-        val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
-            (trigger, name) =>
-            trigger.create(name, feed = Some("/whisk.system/alarms/alarm"), parameters = Map(
-                    "trigger_payload" -> "alarmTest".toJson,
-                    "cron" -> "* * * * * *".toJson,
-                    "maxTriggers" -> 3.toJson))
-        }
-        feedCreationResult.stdout should include("ok")
-
-        // get activation list of the trigger
-        val activations = wsk.activation.pollFor(N = 4, Some(triggerName), retries = 15).length
-        println(s"Found activation size: $activations")
-        activations should be(3)
-    }
 
     it should "should disable after reaching max triggers" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
@@ -161,6 +135,158 @@ class AlarmsFeedTests
                             status should not(contain key "reason")
                     }
             }
+
+    }
+
+    it should "return error message when alarm action does not include cron parameter" in withAssetCleaner(wskprops) {
+
+        (wp, assetHelper) =>
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "alarm"
+
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
+
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
+            }
+
+            // create whisk stuff
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                        "trigger_payload" -> "alarmTest".toJson),
+                        expectedExitCode = 246)
+            }
+            feedCreationResult.stderr should include("alarms trigger feed is missing the cron parameter")
+
+    }
+
+    it should "return error message when alarms once action does not include date parameter" in withAssetCleaner(wskprops) {
+
+        (wp, assetHelper) =>
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "once"
+
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
+
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
+            }
+
+            // create whisk stuff
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                        "trigger_payload" -> "alarmTest".toJson),
+                        expectedExitCode = 246)
+            }
+            feedCreationResult.stderr should include("alarms once trigger feed is missing the date parameter")
+
+    }
+
+    it should "return error message when alarm action includes invalid cron parameter" in withAssetCleaner(wskprops) {
+
+        (wp, assetHelper) =>
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "alarm"
+
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
+
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
+            }
+
+            val cron = System.currentTimeMillis
+
+            // create whisk stuff
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                        "trigger_payload" -> "alarmTest".toJson,
+                        "cron" -> cron.toJson),
+                        expectedExitCode = 246)
+            }
+            feedCreationResult.stderr should include(s"cron pattern '${cron}' is not valid")
+
+    }
+
+    it should "return error message when alarms once action includes an invalid date parameter" in withAssetCleaner(wskprops) {
+
+        (wp, assetHelper) =>
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "once"
+
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
+
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
+            }
+
+            // create whisk stuff
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                        "trigger_payload" -> "alarmTest".toJson,
+                        "date" -> "tomorrow".toJson),
+                        expectedExitCode = 246)
+            }
+            feedCreationResult.stderr should include("date parameter 'tomorrow' is not a valid Date")
+
+    }
+
+    it should "return error message when alarms once action date parameter is not a future date" in withAssetCleaner(wskprops) {
+
+        (wp, assetHelper) =>
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "once"
+
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
+
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
+            }
+
+            val pastDate = System.currentTimeMillis - 5000
+
+            // create whisk stuff
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                        "trigger_payload" -> "alarmTest".toJson,
+                        "date" -> pastDate.toJson),
+                        expectedExitCode = 246)
+            }
+            feedCreationResult.stderr should include(s"date parameter '${pastDate}' must be in the future")
 
     }
 }
