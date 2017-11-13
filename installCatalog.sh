@@ -55,8 +55,33 @@ $WSK_CLI -i --apihost "$EDGEHOST" package update --auth "$AUTH" --shared yes ala
      -p cron '' \
      -p trigger_payload ''
 
-$WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" alarms/alarm "$PACKAGE_HOME/action/alarm.js" \
+# make alarmFeed.zip
+cd action
+
+if [ -e alarmFeed.zip ]
+then
+    rm -rf alarmFeed.zip
+fi
+
+cp -f alarmFeed_package.json package.json
+zip -r alarmFeed.zip lib package.json alarm.js
+
+$WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" alarms/alarm "$PACKAGE_HOME/action/alarmFeed.zip" \
      -a description 'Fire trigger when alarm occurs' \
+     -a feed true
+
+
+# make alarmOnce.zip
+if [ -e alarmOnce.zip ]
+then
+    rm -rf alarmOnce.zip
+fi
+
+cp -f alarmOnce_package.json package.json
+zip -r alarmOnce.zip lib package.json alarmOnce.js
+
+$WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" alarms/once "$PACKAGE_HOME/action/alarmOnce.zip" \
+     -a description 'Fire trigger once when alarm occurs' \
      -a feed true
 
 if [ -n "$WORKERS" ];
@@ -74,7 +99,7 @@ else
 fi
 
 # make alarmWebAction.zip
-cd action
+cp -f alarmWeb_package.json package.json
 npm install
 
 if [ -e alarmWebAction.zip ];
@@ -82,7 +107,7 @@ then
     rm -rf alarmWebAction.zip
 fi
 
-zip -r alarmWebAction.zip package.json alarmWebAction.js node_modules
+zip -r alarmWebAction.zip lib package.json alarmWebAction.js node_modules
 
 $WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" alarmsWeb/alarmWebAction "$PACKAGE_HOME/action/alarmWebAction.zip" \
     -a description 'Create/Delete a trigger in alarms provider Database' \

@@ -22,7 +22,7 @@ import common.{TestHelpers, Wsk, WskProps, WskTestHelpers}
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-import spray.json.DefaultJsonProtocol.{IntJsonFormat, StringJsonFormat}
+import spray.json.DefaultJsonProtocol.{LongJsonFormat, StringJsonFormat}
 import spray.json.pimpAny
 
 /**
@@ -89,7 +89,7 @@ class AlarmsHealthFeedTests
             activationsAfterWait should be(activationsAfterDelete)
     }
 
-    it should "should not fail when specifying triggers above 1 Million" in withAssetCleaner(wskprops) {
+    it should "fire an alarm once trigger when specifying a future date" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
@@ -105,43 +105,22 @@ class AlarmsHealthFeedTests
                 (pkg, name) => pkg.bind("/whisk.system/alarms", name)
             }
 
+            val futureDate = System.currentTimeMillis + (1000 * 30)
+
             // create whisk stuff
             println(s"Creating trigger: $triggerName")
             val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
                 (trigger, name) =>
-                    trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
+                    trigger.create(name, feed = Some(s"$packageName/once"), parameters = Map(
                         "trigger_payload" -> "alarmTest".toJson,
-                        "cron" -> "* * * * * *".toJson,
-                        "maxTriggers" -> 100000000.toJson))
+                        "date" -> futureDate.toJson))
             }
             feedCreationResult.stdout should include("ok")
+
+            println("waiting for trigger")
+            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 60).length
+            println(s"Found activation size (should be 1): $activations")
+            activations should be(1)
     }
 
-    it should "should not deny trigger creation when choosing maxTriggers set to infinity (-1)" in withAssetCleaner(wskprops) {
-        (wp, assetHelper) =>
-            implicit val wskprops = wp // shadow global props and make implicit
-            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyAlarmsPackage"
-
-            // the package alarms should be there
-            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
-            println("fetched package alarms")
-            packageGetResult.stdout should include("ok")
-
-            // create package binding
-            assetHelper.withCleaner(wsk.pkg, packageName) {
-                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
-            }
-
-            // create whisk stuff
-            println(s"Creating trigger: $triggerName")
-            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
-                (trigger, name) =>
-                    trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
-                        "trigger_payload" -> "alarmTest".toJson,
-                        "cron" -> "* * * * * *".toJson,
-                        "maxTriggers" -> (-1).toJson))
-            }
-            feedCreationResult.stderr should not include("error")
-    }
 }
