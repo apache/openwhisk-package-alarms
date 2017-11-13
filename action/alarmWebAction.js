@@ -20,7 +20,7 @@ function main(params) {
     var workers = params.workers instanceof Array ? params.workers : [];
     var db;
 
-    if (params.__ow_method === "put") {
+    if (params.__ow_method === "post") {
 
         if (typeof params.trigger_payload === 'string') {
             params.trigger_payload = {payload: params.trigger_payload};
@@ -42,30 +42,49 @@ function main(params) {
             if (!params.date) {
                 return common.sendError(400, 'alarms once trigger feed is missing the date parameter');
             }
-            else {
-                var date = new Date(params.date);
-                if (isNaN(date.getTime())) {
-                    return common.sendError(400, `date parameter '${params.date}' is not a valid Date`);
-                }
-                else if (Date.now() >= date.getTime()) {
-                    return common.sendError(400, `date parameter '${params.date}' must be in the future`);
-                }
-                else {
-                    newTrigger.date = params.date;
-                }
+            var date = validateDate(params.date, 'date');
+            if (date !== params.date) {
+                return common.sendError(400, date);
             }
+            newTrigger.date = date;
         }
         else {
             if (!params.cron) {
                 return common.sendError(400, 'alarms trigger feed is missing the cron parameter');
             }
-            else {
-                try {
-                    new CronJob(params.cron, function() {});
-                    newTrigger.cron = params.cron;
-                } catch(ex) {
-                    return common.sendError(400, `cron pattern '${params.cron}' is not valid`);
+
+            var cronHandle;
+            try {
+                cronHandle = new CronJob(params.cron, function() {});
+                newTrigger.cron = params.cron;
+            } catch(ex) {
+                return common.sendError(400, `cron pattern '${params.cron}' is not valid`);
+            }
+
+            if (params.startDate) {
+                var startDate = validateDate(params.startDate, 'startDate');
+                if (startDate !== params.startDate) {
+                    return common.sendError(400, startDate);
                 }
+                newTrigger.startDate = startDate;
+            }
+
+            if (params.stopDate) {
+                if (params.maxTriggers) {
+                    return common.sendError(400, 'maxTriggers is not allowed when the stopDate parameter is specified');
+                }
+
+                var stopDate = validateDate(params.stopDate, 'stopDate', params.startDate);
+                if (stopDate !== params.stopDate) {
+                    return common.sendError(400, stopDate);
+                }
+                //verify that the next scheduled trigger fire will occur before the stop date
+                var triggerDate = cronHandle.nextDate();
+                if (triggerDate.isAfter(new Date(params.stopDate))) {
+                    return common.sendError(400, 'the next scheduled trigger fire is not until after the stop date');
+                }
+
+                newTrigger.stopDate = stopDate;
             }
         }
 
@@ -119,6 +138,8 @@ function main(params) {
                 }
                 else {
                     body.config.cron = doc.cron;
+                    body.config.startDate = doc.startDate;
+                    body.config.stopDate = doc.stopDate;
                 }
                 resolve({
                     statusCode: 200,
@@ -157,6 +178,25 @@ function main(params) {
     else {
         return common.sendError(400, 'unsupported lifecycleEvent');
     }
+}
+
+function validateDate(date, paramName, startDate) {
+
+    var dateObject = new Date(date);
+
+    if (isNaN(dateObject.getTime())) {
+        return `${paramName} parameter '${date}' is not a valid Date`;
+    }
+    else if (Date.now() >= dateObject.getTime()) {
+        return `${paramName} parameter '${date}' must be in the future`;
+    }
+    else if (startDate && dateObject <= new Date(startDate).getTime()) {
+        return `${paramName} parameter '${date}' must be greater than the startDate parameter ${startDate}`;
+    }
+    else {
+        return date;
+    }
+
 }
 
 exports.main = main;

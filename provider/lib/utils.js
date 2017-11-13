@@ -1,4 +1,3 @@
-var _ = require('lodash');
 var request = require('request');
 var HttpStatus = require('http-status-codes');
 var constants = require('./constants.js');
@@ -152,6 +151,13 @@ module.exports = function(
             utils.disableTrigger(triggerIdentifier, undefined, 'Automatically disabled after firing once');
             logger.info(method, 'the fire once date has expired, disabled', triggerIdentifier);
         }
+        else if (dataTrigger.stopDate) {
+            //check if the next scheduled trigger is after the stop date
+            if (dataTrigger.cronHandle && dataTrigger.cronHandle.nextDate().isAfter(new Date(dataTrigger.stopDate))) {
+                utils.disableTrigger(triggerIdentifier, undefined, 'Automatically disabled after firing last scheduled trigger');
+                logger.info(method, 'last scheduled trigger before stop date, disabled', triggerIdentifier);
+            }
+        }
         else if (dataTrigger.maxTriggers && dataTrigger.triggersLeft === 0) {
             utils.disableTrigger(triggerIdentifier, undefined, 'Automatically disabled after reaching max triggers');
             logger.warn(method, 'no more triggers left, disabled', triggerIdentifier);
@@ -240,7 +246,7 @@ module.exports = function(
                         }, function (error, response) {
                             //disable trigger in database if trigger is dead
                             if (!error && utils.shouldDisableTrigger(response.statusCode)) {
-                                var message = 'Automatically disabled after receiving a ' + response.statusCode + ' status code on init trigger';
+                                var message = 'Automatically disabled after receiving a ' + response.statusCode + ' status code on trigger initialization';
                                 utils.disableTrigger(triggerIdentifier, response.statusCode, message);
                                 logger.error(method, 'trigger', triggerIdentifier, 'has been disabled due to status code:', response.statusCode);
                             }
@@ -251,9 +257,9 @@ module.exports = function(
                                     logger.info(method, triggerIdentifier, 'created successfully');
                                 })
                                 .catch(err => {
-                                    var message = 'Automatically disabled after receiving exception on init trigger: ' + err;
+                                    var message = 'Automatically disabled after receiving error on trigger initialization: ' + err;
                                     utils.disableTrigger(triggerIdentifier, undefined, message);
-                                    logger.error(method, 'Disabled trigger', triggerIdentifier, 'due to exception:', err);
+                                    logger.error(method, 'Disabled trigger', triggerIdentifier, err);
                                 });
                             }
                         });
@@ -296,9 +302,9 @@ module.exports = function(
                             logger.info(method, triggerIdentifier, 'created successfully');
                         })
                         .catch(err => {
-                            var message = 'Automatically disabled after receiving exception on create trigger: ' + err;
+                            var message = 'Automatically disabled after receiving error on trigger creation: ' + err;
                             utils.disableTrigger(triggerIdentifier, undefined, message);
-                            logger.error(method, 'Disabled trigger', triggerIdentifier, 'due to exception:', err);
+                            logger.error(method, 'Disabled trigger', triggerIdentifier, err);
                         });
                     }
                 }

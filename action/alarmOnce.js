@@ -3,7 +3,7 @@ const common = require('./lib/common');
 function main(msg) {
 
     let eventMap = {
-        CREATE: 'put',
+        CREATE: 'post',
         READ: 'get',
         // UPDATE: 'put',
         DELETE: 'delete'
