@@ -76,4 +76,3 @@ The following is an example of creating a trigger that will be fired once on Dec
     --param trigger_payload "{\"name\":\"Odin\",\"place\":\"Asgard\"}" \
     --param date "2017-12-25T12:30:00.000Z"
   ``` 
-  
