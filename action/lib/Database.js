@@ -85,7 +85,7 @@ module.exports = function(dbURL, dbName) {
         });
     };
 
-    this.updateTrigger = function(triggerID, retryCount) {
+    this.disableTrigger = function(triggerID, retryCount) {
 
         return new Promise(function(resolve, reject) {
 
@@ -98,7 +98,7 @@ module.exports = function(dbURL, dbName) {
                         if (err) {
                             if (err.statusCode === 409 && retryCount < 5) {
                                 setTimeout(function () {
-                                    utilsDB.updateTrigger(triggerID, (retryCount + 1))
+                                    utilsDB.disableTrigger(triggerID, (retryCount + 1))
                                     .then(id => {
                                         resolve(id);
                                     })
@@ -121,7 +121,7 @@ module.exports = function(dbURL, dbName) {
                     if (retryCount === 0) {
                         var parts = triggerID.split('/');
                         var id = parts[0] + '/_/' + parts[2];
-                        utilsDB.updateTrigger(id, (retryCount + 1))
+                        utilsDB.disableTrigger(id, (retryCount + 1))
                         .then(id => {
                             resolve(id);
                         })

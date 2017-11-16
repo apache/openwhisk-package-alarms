@@ -6,6 +6,7 @@ module.exports = function(logger, newTrigger) {
         apikey: newTrigger.apikey,
         name: newTrigger.name,
         namespace: newTrigger.namespace,
+        payload: newTrigger.payload,
         date: newTrigger.date
     };
 

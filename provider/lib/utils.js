@@ -1,8 +1,10 @@
 var request = require('request');
 var HttpStatus = require('http-status-codes');
+var lt =  require('long-timeout');
 var constants = require('./constants.js');
 var DateAlarm = require('./dateAlarm.js');
 var CronAlarm = require('./cronAlarm.js');
+var IntervalAlarm = require('./intervalAlarm.js');
 
 module.exports = function(
   logger,
@@ -36,7 +38,7 @@ module.exports = function(
                 var triggerHandle = utils.triggers[triggerIdentifier];
                 if (triggerHandle && (!triggerHandle.maxTriggers || triggerHandle.maxTriggers === -1 || triggerHandle.triggersLeft > 0)) {
                     try {
-                        utils.fireTrigger(newTrigger.namespace, newTrigger.name, newTrigger.payload, newTrigger.apikey);
+                        utils.fireTrigger(triggerHandle);
                     } catch (e) {
                         logger.error(method, 'Exception occurred while firing trigger', triggerIdentifier, e);
                     }
@@ -48,6 +50,9 @@ module.exports = function(
         if (newTrigger.date) {
             alarm = new DateAlarm(logger, newTrigger);
         }
+        else if (newTrigger.minutes) {
+            alarm = new IntervalAlarm(logger, newTrigger);
+        }
         else {
             alarm = new CronAlarm(logger, newTrigger);
         }
@@ -55,17 +60,16 @@ module.exports = function(
         return alarm.scheduleAlarm(triggerIdentifier, callback);
     };
 
-    this.fireTrigger = function(namespace, name, payload, apikey) {
+    this.fireTrigger = function(dataTrigger) {
         var method = 'fireTrigger';
 
-        var triggerIdentifier = utils.getTriggerIdentifier(apikey, namespace, name);
+        var triggerIdentifier = utils.getTriggerIdentifier(dataTrigger.apikey, dataTrigger.namespace, dataTrigger.name);
         var host = 'https://' + utils.routerHost + ':443';
-        var auth = apikey.split(':');
-        var dataTrigger = utils.triggers[triggerIdentifier];
-        var uri = host + '/api/v1/namespaces/' + namespace + '/triggers/' + name;
+        var auth = dataTrigger.apikey.split(':');
+        var uri = host + '/api/v1/namespaces/' + dataTrigger.namespace + '/triggers/' + dataTrigger.name;
 
-        logger.info(method, 'Cron fired for', triggerIdentifier, 'attempting to fire trigger');
-        utils.postTrigger(dataTrigger, payload, uri, auth, 0)
+        logger.info(method, 'Alarm fired for', triggerIdentifier, 'attempting to fire trigger');
+        utils.postTrigger(dataTrigger, uri, auth, 0)
         .then(triggerId => {
             logger.info(method, 'Trigger', triggerId, 'was successfully fired');
             utils.disableExtinctTriggers(triggerIdentifier, dataTrigger);
@@ -76,7 +80,7 @@ module.exports = function(
         });
     };
 
-    this.postTrigger = function(dataTrigger, payload, uri, auth, retryCount) {
+    this.postTrigger = function(dataTrigger, uri, auth, retryCount) {
         var method = 'postTrigger';
 
         return new Promise(function(resolve, reject) {
@@ -93,7 +97,7 @@ module.exports = function(
                     user: auth[0],
                     pass: auth[1]
                 },
-                json: payload
+                json: dataTrigger.payload
             }, function(error, response) {
                 try {
                     var triggerIdentifier = utils.getTriggerIdentifier(dataTrigger.apikey, dataTrigger.namespace, dataTrigger.name);
@@ -115,7 +119,7 @@ module.exports = function(
                             if (retryCount < retryAttempts) {
                                 logger.info(method, 'attempting to fire trigger again', triggerIdentifier, 'Retry Count:', (retryCount + 1));
                                 setTimeout(function () {
-                                    utils.postTrigger(dataTrigger, payload, uri, auth, (retryCount + 1))
+                                    utils.postTrigger(dataTrigger, uri, auth, (retryCount + 1))
                                     .then(triggerId => {
                                         resolve(triggerId);
                                     })
@@ -154,8 +158,12 @@ module.exports = function(
         else if (dataTrigger.stopDate) {
             //check if the next scheduled trigger is after the stop date
             if (dataTrigger.cronHandle && dataTrigger.cronHandle.nextDate().isAfter(new Date(dataTrigger.stopDate))) {
-                utils.disableTrigger(triggerIdentifier, undefined, 'Automatically disabled after firing last scheduled trigger');
-                logger.info(method, 'last scheduled trigger before stop date, disabled', triggerIdentifier);
+                utils.disableTrigger(triggerIdentifier, undefined, 'Automatically disabled after firing last scheduled cron trigger');
+                logger.info(method, 'last scheduled cron trigger before stop date, disabled', triggerIdentifier);
+            }
+            else if (dataTrigger.minutes && (Date.now() + (dataTrigger.minutes * 1000 * 60) > new Date(dataTrigger.stopDate).getTime())) {
+                utils.disableTrigger(triggerIdentifier, undefined, 'Automatically disabled after firing last scheduled interval trigger');
+                logger.info(method, 'last scheduled interval trigger before stop date, disabled', triggerIdentifier);
             }
         }
         else if (dataTrigger.maxTriggers && dataTrigger.triggersLeft === 0) {
@@ -203,6 +211,9 @@ module.exports = function(
         if (utils.triggers[triggerIdentifier]) {
             if (utils.triggers[triggerIdentifier].cronHandle) {
                 utils.triggers[triggerIdentifier].cronHandle.stop();
+            }
+            else if (utils.triggers[triggerIdentifier].intervalHandle) {
+                lt.clearInterval(utils.triggers[triggerIdentifier].intervalHandle);
             }
             delete utils.triggers[triggerIdentifier];
             logger.info(method, 'trigger', triggerIdentifier, 'successfully deleted from memory');
@@ -255,6 +266,13 @@ module.exports = function(
                                 .then(cachedTrigger => {
                                     utils.triggers[triggerIdentifier] = cachedTrigger;
                                     logger.info(method, triggerIdentifier, 'created successfully');
+                                    if (cachedTrigger.intervalHandle && utils.activeHost === utils.host) {
+                                        try {
+                                            utils.fireTrigger(cachedTrigger);
+                                        } catch (e) {
+                                            logger.error(method, 'Exception occurred while firing trigger', triggerIdentifier, e);
+                                        }
+                                    }
                                 })
                                 .catch(err => {
                                     var message = 'Automatically disabled after receiving error on trigger initialization: ' + err;
@@ -300,6 +318,13 @@ module.exports = function(
                         .then(cachedTrigger => {
                             utils.triggers[triggerIdentifier] = cachedTrigger;
                             logger.info(method, triggerIdentifier, 'created successfully');
+                            if (cachedTrigger.intervalHandle && utils.activeHost === utils.host) {
+                                try {
+                                    utils.fireTrigger(cachedTrigger);
+                                } catch (e) {
+                                    logger.error(method, 'Exception occurred while firing trigger', triggerIdentifier, e);
+                                }
+                            }
                         })
                         .catch(err => {
                             var message = 'Automatically disabled after receiving error on trigger creation: ' + err;
