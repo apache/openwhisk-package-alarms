@@ -70,20 +70,11 @@ $WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" a
      -a parameters '[ {"name":"cron", "required":true}, {"name":"startDate", "required":false}, {"name":"stopDate", "required":false} ]' \
      -a feed true
 
-
-# make alarmOnce.zip
-if [ -e alarmOnce.zip ]
-then
-    rm -rf alarmOnce.zip
-fi
-
-cp -f alarmOnce_package.json package.json
-zip -r alarmOnce.zip lib package.json alarmOnce.js
-
-$WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" alarms/once "$PACKAGE_HOME/action/alarmOnce.zip" \
+$WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" alarms/once "$PACKAGE_HOME/action/alarmFeed.zip" \
      -a description 'Fire trigger once when alarm occurs' \
      -a parameters '[ {"name":"date", "required":true} ]' \
-     -a feed true
+     -a feed true \
+     -p fireOnce true
 
 if [ -n "$WORKERS" ];
 then
