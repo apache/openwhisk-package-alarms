@@ -45,3 +45,36 @@ For more details about using this custom cron syntax, see: https://github.com/nc
 Here is an example using six fields notation:
   - `*/30 * * * * *`: every thirty seconds.
 
+## Firing a one-off trigger event
+
+Using the `maxTriggers` parameter with an appropriate `cron` schedule allows triggers to be fired with a "one-off event", rather than on a continual basis.
+
+Setting the `maxTriggers` parameter value to `1` ensures that the first time the trigger has been fired, the scheduler will disable future invocations. The `cron` parameter fields can be configured to match the next date and time when the event should fire. 
+
+`cron` parameters which set the first four fields (minute, hour, day of month, month) of the cron schedule value, using a wildcard for the day of the week, will match a single date time once per year. 
+
+### Example
+
+*What if we want to fire an event when the New Year starts?*
+
+Here’s the cron schedule for 00:00 on January 1st.
+
+```
+# ┌───────────── minute (0 - 59)
+# │ ┌───────────── hour (0 - 23)
+# │ │ ┌───────────── day of month (1 - 31)
+# │ │ │ ┌───────────── month (0 - 11)
+# │ │ │ │ ┌───────────── day of week (0 - 6) (Sunday to Saturday)
+# │ │ │ │ │
+# │ │ │ │ │
+# 0 0 1 0 *
+```
+
+Here are the cli commands to set up a one-off trigger to run at 00:00 @ 01/01 to celebrate the new year.
+
+```
+$ wsk trigger create new_year --feed /whisk.system/alarms/alarm -p cron '0 0 1 0 *' -p maxTriggers 1 -p trigger_payload '{"message":"Happy New Year!"}'
+ok: invoked /whisk.system/alarms/alarm with id 754bec0a58b944a68bec0a58b9f4a6c1
+...
+ok: created trigger new_year
+```
