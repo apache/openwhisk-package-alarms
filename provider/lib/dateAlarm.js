@@ -26,7 +26,7 @@ module.exports = function(logger, newTrigger) {
                     resolve(cachedTrigger);
                 }
                 else {
-                    return reject("the fire once date has expired");
+                    return reject('the fire once date has expired');
                 }
             });
         } catch (err) {

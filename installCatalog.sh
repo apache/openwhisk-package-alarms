@@ -50,9 +50,8 @@ echo Installing Alarms package.
 
 $WSK_CLI -i --apihost "$EDGEHOST" package update --auth "$AUTH" --shared yes alarms \
      -a description 'Alarms and periodic utility' \
-     -a parameters '[ {"name":"cron", "required":true}, {"name":"trigger_payload", "required":false} ]' \
+     -a parameters '[ {"name":"trigger_payload", "required":false} ]' \
      -p apihost "$APIHOST" \
-     -p cron '' \
      -p trigger_payload ''
 
 # make alarmFeed.zip
@@ -68,21 +67,14 @@ zip -r alarmFeed.zip lib package.json alarm.js
 
 $WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" alarms/alarm "$PACKAGE_HOME/action/alarmFeed.zip" \
      -a description 'Fire trigger when alarm occurs' \
+     -a parameters '[ {"name":"cron", "required":true}, {"name":"startDate", "required":false}, {"name":"stopDate", "required":false} ]' \
      -a feed true
 
-
-# make alarmOnce.zip
-if [ -e alarmOnce.zip ]
-then
-    rm -rf alarmOnce.zip
-fi
-
-cp -f alarmOnce_package.json package.json
-zip -r alarmOnce.zip lib package.json alarmOnce.js
-
-$WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" alarms/once "$PACKAGE_HOME/action/alarmOnce.zip" \
+$WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" alarms/once "$PACKAGE_HOME/action/alarmFeed.zip" \
      -a description 'Fire trigger once when alarm occurs' \
-     -a feed true
+     -a parameters '[ {"name":"date", "required":true} ]' \
+     -a feed true \
+     -p fireOnce true
 
 if [ -n "$WORKERS" ];
 then

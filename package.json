@@ -18,6 +18,7 @@
     "request-promise": "^1.0.2",
     "redis":"^2.7.1",
     "bluebird": "^3.5.0",
-    "systeminformation": "^3.19.0"
+    "systeminformation": "^3.19.0",
+    "long-timeout": "^0.1.1"
   }
 }

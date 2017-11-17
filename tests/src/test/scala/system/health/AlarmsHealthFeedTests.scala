@@ -106,7 +106,7 @@ class AlarmsHealthFeedTests
                 (pkg, name) => pkg.bind("/whisk.system/alarms", name)
             }
 
-            val futureDate = System.currentTimeMillis + (1000 * 30)
+            val futureDate = System.currentTimeMillis + (1000 * 20)
 
             // create whisk stuff
             println(s"Creating trigger: $triggerName")
@@ -119,7 +119,7 @@ class AlarmsHealthFeedTests
             feedCreationResult.stdout should include("ok")
 
             println("waiting for trigger")
-            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 60).length
+            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 30).length
             println(s"Found activation size (should be 1): $activations")
             activations should be(1)
     }
@@ -185,5 +185,49 @@ class AlarmsHealthFeedTests
                     }
             }
 
+    }
+
+    it should "fire cron trigger using startDate and stopDate" in withAssetCleaner(wskprops) {
+        (wp, assetHelper) =>
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
+
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
+
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
+            }
+
+            val startDate = System.currentTimeMillis + (1000 * 20)
+            val stopDate = startDate + (1000 * 10)
+
+            println(s"Creating trigger: $triggerName")
+            // create whisk stuff
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
+                        "cron" -> "* * * * * *".toJson,
+                        "startDate" -> startDate.toJson,
+                        "stopDate" -> stopDate.toJson))
+            }
+            feedCreationResult.stdout should include("ok")
+
+            println("waiting for triggers")
+            val activations = wsk.activation.pollFor(N = 20, Some(triggerName), retries = 45).length
+            println(s"Found activation size (should be at least 5): $activations")
+            activations should be >= 5
+
+
+            // get activation list again, should be same as before sleeping
+            println("confirming no new triggers")
+            val activationsAfterWait = wsk.activation.pollFor(N = activations + 1, Some(triggerName)).length
+            println(s"Found activation size after wait: $activationsAfterWait")
+            println("Activation list after wait should equal with activation list after stopDate")
+            activationsAfterWait should be(activations)
     }
 }

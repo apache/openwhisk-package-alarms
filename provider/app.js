@@ -5,7 +5,6 @@
  */
 var http = require('http');
 var express = require('express');
-var request = require('request');
 var bodyParser = require('body-parser');
 var bluebird = require('bluebird');
 var logger = require('./Logger');
