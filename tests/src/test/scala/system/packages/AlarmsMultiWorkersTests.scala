@@ -72,13 +72,13 @@ class AlarmsMultiWorkersTests extends FlatSpec
                 wsk.trigger.create(worker10Trigger)
 
                 //create trigger feed and assign to worker10
-                makePutCallWithExpectedResult(worker10Params, 200)
+                makePostCallWithExpectedResult(worker10Params, 200)
 
                 wsk.trigger.create(worker11Trigger)
 
                 //create trigger feed and assign to worker10 or worker11
                 //the one with the least assigned triggers will be chosen
-                makePutCallWithExpectedResult(worker11Params, 200)
+                makePostCallWithExpectedResult(worker11Params, 200)
 
                 val dbName = s"${dbPrefix}alarmservice"
                 val documents = getAllDocs(dbName)
@@ -99,12 +99,12 @@ class AlarmsMultiWorkersTests extends FlatSpec
             }
     }
 
-    def makePutCallWithExpectedResult(params: JsObject, expectedCode: Int) = {
+    def makePostCallWithExpectedResult(params: JsObject, expectedCode: Int) = {
         val response = RestAssured.given()
                 .contentType(ContentType.JSON)
                 .config(RestAssured.config().sslConfig(new SSLConfig().relaxedHTTPSValidation()))
                 .body(params.toString())
-                .put(webActionURL)
+                .post(webActionURL)
         assert(response.statusCode() == expectedCode)
     }
 
