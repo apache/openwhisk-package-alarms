@@ -54,24 +54,24 @@ class AlarmsFeedWebTests
     it should "reject put of a trigger due to missing triggerName argument" in {
         val params = JsObject(originalParams.fields - "triggerName")
 
-        makePutCallWithExpectedResult(params, JsObject("error" -> JsString("no trigger name parameter was provided")), 400)
+        makePostCallWithExpectedResult(params, JsObject("error" -> JsString("no trigger name parameter was provided")), 400)
     }
 
     it should "reject put of a trigger due to missing cron argument" in {
         val params = JsObject(originalParams.fields - "cron")
 
-        makePutCallWithExpectedResult(params, JsObject("error" -> JsString("alarms trigger feed is missing the cron parameter")), 400)
+        makePostCallWithExpectedResult(params, JsObject("error" -> JsString("alarms trigger feed is missing the cron parameter")), 400)
     }
 
     it should "reject put of a trigger due to invalid cron argument" in {
         val params = JsObject(originalParams.fields + ("cron" -> JsString("***")))
 
-        makePutCallWithExpectedResult(params, JsObject("error" -> JsString("cron pattern '***' is not valid")), 400)
+        makePostCallWithExpectedResult(params, JsObject("error" -> JsString("cron pattern '***' is not valid")), 400)
     }
 
     it should "reject put of a trigger when authentication fails" in {
         val params = JsObject(originalParams.fields + ("cron" -> JsString("* * * * *")))
-        makePutCallWithExpectedResult(params, JsObject("error" -> JsString("Trigger authentication request failed.")), 401)
+        makePostCallWithExpectedResult(params, JsObject("error" -> JsString("Trigger authentication request failed.")), 401)
     }
 
     it should "reject delete of a trigger due to missing triggerName argument" in {
@@ -84,12 +84,12 @@ class AlarmsFeedWebTests
         makeDeleteCallWithExpectedResult(originalParams, JsObject("error" -> JsString("Trigger authentication request failed.")), 401)
     }
 
-    def makePutCallWithExpectedResult(params: JsObject, expectedResult: JsObject, expectedCode: Int) = {
+    def makePostCallWithExpectedResult(params: JsObject, expectedResult: JsObject, expectedCode: Int) = {
         val response = RestAssured.given()
                 .contentType(ContentType.JSON)
                 .config(RestAssured.config().sslConfig(new SSLConfig().relaxedHTTPSValidation()))
                 .body(params.toString())
-                .put(webActionURL)
+                .post(webActionURL)
         assert(response.statusCode() == expectedCode)
         response.body.asString.parseJson.asJsObject shouldBe expectedResult
     }
