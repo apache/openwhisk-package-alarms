@@ -290,4 +290,63 @@ class AlarmsFeedTests
             feedCreationResult.stderr should include(s"stopDate parameter '${stopDate}' must be greater than the startDate")
 
     }
+
+    it should "return error message when interval action does not include minutes parameter" in withAssetCleaner(wskprops) {
+
+        (wp, assetHelper) =>
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "interval"
+
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
+
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
+            }
+
+            // create whisk stuff
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                        "trigger_payload" -> "alarmTest".toJson),
+                        expectedExitCode = 246)
+            }
+            feedCreationResult.stderr should include("interval trigger feed is missing the minutes parameter")
+
+    }
+
+    it should "return error message when interval action includes invalid minutes parameter" in withAssetCleaner(wskprops) {
+
+        (wp, assetHelper) =>
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "interval"
+
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
+
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
+            }
+
+            // create whisk stuff
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                        "trigger_payload" -> "alarmTest".toJson,
+                        "minutes" -> "five".toJson),
+                        expectedExitCode = 246)
+            }
+            feedCreationResult.stderr should include("the minutes parameter must be an integer")
+
+    }
 }

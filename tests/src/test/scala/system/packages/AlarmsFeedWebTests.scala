@@ -51,25 +51,25 @@ class AlarmsFeedWebTests
         wsk.action.get(webAction, FORBIDDEN)
     }
 
-    it should "reject put of a trigger due to missing triggerName argument" in {
+    it should "reject post of a trigger due to missing triggerName argument" in {
         val params = JsObject(originalParams.fields - "triggerName")
 
         makePostCallWithExpectedResult(params, JsObject("error" -> JsString("no trigger name parameter was provided")), 400)
     }
 
-    it should "reject put of a trigger due to missing cron argument" in {
+    it should "reject post of a trigger due to missing cron argument" in {
         val params = JsObject(originalParams.fields - "cron")
 
         makePostCallWithExpectedResult(params, JsObject("error" -> JsString("alarms trigger feed is missing the cron parameter")), 400)
     }
 
-    it should "reject put of a trigger due to invalid cron argument" in {
+    it should "reject post of a trigger due to invalid cron argument" in {
         val params = JsObject(originalParams.fields + ("cron" -> JsString("***")))
 
         makePostCallWithExpectedResult(params, JsObject("error" -> JsString("cron pattern '***' is not valid")), 400)
     }
 
-    it should "reject put of a trigger when authentication fails" in {
+    it should "reject post of a trigger when authentication fails" in {
         val params = JsObject(originalParams.fields + ("cron" -> JsString("* * * * *")))
         makePostCallWithExpectedResult(params, JsObject("error" -> JsString("Trigger authentication request failed.")), 401)
     }

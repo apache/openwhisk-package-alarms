@@ -49,16 +49,33 @@ function main(params) {
             newTrigger.date = date;
         }
         else {
-            if (!params.cron) {
-                return common.sendError(400, 'alarms trigger feed is missing the cron parameter');
-            }
-
             var cronHandle;
-            try {
-                cronHandle = new CronJob(params.cron, function() {});
-                newTrigger.cron = params.cron;
-            } catch(ex) {
-                return common.sendError(400, `cron pattern '${params.cron}' is not valid`);
+
+            if (params.isInterval) {
+                if (!params.minutes) {
+                    return common.sendError(400, 'interval trigger feed is missing the minutes parameter');
+                }
+                if (+params.minutes !== parseInt(params.minutes)) {
+                    return common.sendError(400, 'the minutes parameter must be an integer');
+                }
+                var minutesParam = parseInt(params.minutes);
+
+                if (minutesParam <= 0) {
+                    return common.sendError(400, 'the minutes parameter must be an integer greater than zero');
+                }
+                newTrigger.minutes = minutesParam;
+            }
+            else {
+                if (!params.cron) {
+                    return common.sendError(400, 'alarms trigger feed is missing the cron parameter');
+                }
+
+                try {
+                    cronHandle = new CronJob(params.cron, function() {});
+                    newTrigger.cron = params.cron;
+                } catch(ex) {
+                    return common.sendError(400, `cron pattern '${params.cron}' is not valid`);
+                }
             }
 
             if (params.startDate) {
@@ -68,23 +85,31 @@ function main(params) {
                 }
                 newTrigger.startDate = startDate;
             }
+            else if (params.isInterval) {
+                //if startDate was not given we will start it 30 seconds
+                //from now since startDate must be in the future
+                newTrigger.startDate = Date.now() + (1000 * 30);
+            }
 
-            if (params.stopDate) {
-                if (params.maxTriggers) {
+            if (params.maxTriggers && params.stopDate) {
+                if (params.isInterval) {
+                    return common.sendError(400, 'maxTriggers is not supported for the interval trigger feed');
+                }
+                else {
                     return common.sendError(400, 'maxTriggers is not allowed when the stopDate parameter is specified');
                 }
-
-                var stopDate = validateDate(params.stopDate, 'stopDate', params.startDate);
+            }
+            else if (params.stopDate) {
+                var stopDate = validateDate(params.stopDate, 'stopDate', newTrigger.startDate);
                 if (stopDate !== params.stopDate) {
                     return common.sendError(400, stopDate);
                 }
-                //verify that the next scheduled trigger fire will occur before the stop date
-                var triggerDate = cronHandle.nextDate();
-                if (triggerDate.isAfter(new Date(params.stopDate))) {
-                    return common.sendError(400, 'the next scheduled trigger fire is not until after the stop date');
-                }
-
                 newTrigger.stopDate = stopDate;
+
+                //verify that the first scheduled trigger fire will occur before the stop date
+                if (cronHandle && cronHandle.nextDate().isAfter(new Date(params.stopDate))) {
+                    return common.sendError(400, 'the first scheduled trigger fire is not until after the stop date');
+                }
             }
         }
 
@@ -137,9 +162,14 @@ function main(params) {
                     body.config.date = doc.date;
                 }
                 else {
-                    body.config.cron = doc.cron;
                     body.config.startDate = doc.startDate;
                     body.config.stopDate = doc.stopDate;
+                    if (doc.minutes) {
+                        body.config.minutes = doc.minutes;
+                    }
+                    else {
+                        body.config.cron = doc.cron;
+                    }
                 }
                 resolve({
                     statusCode: 200,
@@ -158,7 +188,7 @@ function main(params) {
             common.verifyTriggerAuth(triggerURL, params.authKey, true)
             .then(() => {
                 db = new Database(params.DB_URL, params.DB_NAME);
-                return db.updateTrigger(triggerID, 0);
+                return db.disableTrigger(triggerID, 0);
             })
             .then(id => {
                 return db.deleteTrigger(id, 0);

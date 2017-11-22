@@ -76,6 +76,12 @@ $WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" a
      -a feed true \
      -p fireOnce true
 
+$WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" alarms/interval "$PACKAGE_HOME/action/alarmFeed.zip" \
+     -a description 'Fire trigger at specified interval' \
+     -a parameters '[ {"name":"minutes", "required":true}, {"name":"startDate", "required":false}, {"name":"stopDate", "required":false} ]' \
+     -a feed true \
+     -p isInterval true
+
 if [ -n "$WORKERS" ];
 then
     $WSK_CLI -i --apihost "$EDGEHOST" package update --auth "$AUTH" --shared no alarmsWeb \

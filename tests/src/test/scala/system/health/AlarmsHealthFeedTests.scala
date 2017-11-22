@@ -22,7 +22,7 @@ import common.{TestHelpers, Wsk, WskProps, WskTestHelpers}
 import org.junit.runner.RunWith
 import org.scalatest.{FlatSpec, Inside}
 import org.scalatest.junit.JUnitRunner
-import spray.json.DefaultJsonProtocol.{LongJsonFormat, StringJsonFormat, BooleanJsonFormat}
+import spray.json.DefaultJsonProtocol.{IntJsonFormat, LongJsonFormat, StringJsonFormat, BooleanJsonFormat}
 import spray.json.{JsObject, JsString, pimpAny}
 
 /**
@@ -229,5 +229,46 @@ class AlarmsHealthFeedTests
             println(s"Found activation size after wait: $activationsAfterWait")
             println("Activation list after wait should equal with activation list after stopDate")
             activationsAfterWait should be(activations)
+    }
+
+    it should "fire interval trigger using startDate and stopDate" in withAssetCleaner(wskprops) {
+        (wp, assetHelper) =>
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
+
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
+
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
+            }
+
+            val startDate = System.currentTimeMillis + (1000 * 20)
+            val stopDate = startDate + (1000 * 90)
+
+            println(s"Creating trigger: $triggerName")
+            // create whisk stuff
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/interval"), parameters = Map(
+                        "minutes" -> 1.toJson,
+                        "startDate" -> startDate.toJson,
+                        "stopDate" -> stopDate.toJson))
+            }
+            feedCreationResult.stdout should include("ok")
+
+            println("waiting for start date")
+            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 45).length
+            println(s"Found activation size (should be 1): $activations")
+            activations should be(1)
+
+            println("waiting for interval")
+            val activationsAfterInterval = wsk.activation.pollFor(N = 2, Some(triggerName), retries = 90).length
+            println(s"Found activation size (should be 2): $activationsAfterInterval")
+            activationsAfterInterval should be(2)
     }
 }
