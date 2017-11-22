@@ -12,9 +12,10 @@ The package includes the following feeds.
 | `/whisk.system/alarms` | package | - | Alarms and periodic utility |
 | `/whisk.system/alarms/alarm` | feed | cron, trigger_payload, maxTriggers, startDate, stopDate | Fire trigger event periodically |
 | `/whisk.system/alarms/once` | feed | date, trigger_payload | Fire trigger event once on a specific date |
+| `/whisk.system/alarms/interval` | feed | minutes, trigger_payload, startDate, stopDate | Fire trigger event on an interval based schedule |
 
 
-## Firing a trigger event periodically
+## Firing a trigger event periodically on a time based schedule
 
 The `/whisk.system/alarms/alarm` feed configures the Alarm service to fire a trigger event at a specified frequency. The parameters are as follows:
 
@@ -56,6 +57,35 @@ January 1, 2019, 00:00:00 UTC and will stop firing January 31, 2019, 23:59:00 UT
   ```
 
 Each generated event will include as parameters the properties specified in the `trigger_payload` value. In this case, each trigger event will have parameters `name=Odin` and `place=Asgard`.
+
+
+## Firing a trigger event periodically on an interval based schedule
+
+The `/whisk.system/alarms/interval` feed configures the Alarm service to fire a trigger event on an interval based schedule. The parameters are as follows:
+
+- `minutes`: An integer representing the length of the interval (in minutes) between trigger fires.
+
+- `trigger_payload`: The value of this parameter becomes the content of the trigger every time the trigger is fired.
+
+- `startDate`: The date when the first trigger will be fired.  Subsequent fires will occur based on the interval length specified by the `minutes` parameter.   
+
+- `stopDate`: The date when the trigger will stop running.  Triggers will no longer be fired once this date has been reached.
+
+  **Note**: The `startDate` and `stopDate` parameters support an integer or string value.  The integer value represents the number of milliseconds 
+  since 1 January 1970 00:00:00 UTC and the string value should be in the ISO 8601 format (http://www.ecma-international.org/ecma-262/5.1/#sec-15.9.1.15).
+
+
+The following is an example of creating a trigger that will be fired once every 90 minutes.  The trigger will not start firing until
+January 1, 2019, 00:00:00 UTC and will stop firing January 31, 2019, 23:59:00 UTC.
+
+  ```
+  wsk trigger create interval \
+    --feed /whisk.system/alarms/interval \
+    --param minutes 90 \
+    --param trigger_payload "{\"name\":\"Odin\",\"place\":\"Asgard\"}" \
+    --param startDate "2019-01-01T00:00:00.000Z" \
+    --param stopDate "2019-01-31T23:59:00.000Z"
+  ```
 
 ## Firing a trigger event once  
 
