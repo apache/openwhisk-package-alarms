@@ -106,17 +106,9 @@ function main(params) {
                 }
                 newTrigger.stopDate = stopDate;
 
-                //verify that the next scheduled trigger fire will occur before the stop date
-                var nextTriggerDate;
-                if (cronHandle) {
-                    nextTriggerDate = cronHandle.nextDate();
-                }
-                else {
-                    var momentStartDate = moment(new Date(newTrigger.startDate));
-                    nextTriggerDate = momentStartDate.add(params.minutes, 'minutes');
-                }
-                if (nextTriggerDate.isAfter(new Date(params.stopDate))) {
-                    return common.sendError(400, 'the next scheduled trigger fire is not until after the stop date');
+                //verify that the first scheduled trigger fire will occur before the stop date
+                if (cronHandle && cronHandle.nextDate().isAfter(new Date(params.stopDate))) {
+                    return common.sendError(400, 'the first scheduled trigger fire is not until after the stop date');
                 }
             }
         }
