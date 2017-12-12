@@ -19,10 +19,7 @@ package system.packages
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-import common.TestHelpers
-import common.Wsk
-import common.WskProps
-import common.WskTestHelpers
+import common._
 import spray.json.DefaultJsonProtocol.IntJsonFormat
 import spray.json.DefaultJsonProtocol.{LongJsonFormat, StringJsonFormat}
 import spray.json.pimpAny
@@ -39,38 +36,49 @@ class AlarmsFeedTests
     val wskprops = WskProps()
     val wsk = new Wsk
 
+    val defaultAction = Some(TestUtils.getTestActionFilename("hello.js"))
+    val defaultActionName = "hello"
+
     behavior of "Alarms trigger service"
 
     it should "should disable after reaching max triggers" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
-        implicit val wskprops = wp // shadow global props and make implicit
-        val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
-        val packageName = "dummyAlarmsPackage"
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
 
-        // the package alarms should be there
-        val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
-        println("fetched package alarms")
-        packageGetResult.stdout should include("ok")
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
 
-        // create package binding
-        assetHelper.withCleaner(wsk.pkg, packageName) {
-            (pkg, name) => pkg.bind("/whisk.system/alarms", name)
-        }
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
+            }
 
-        // create whisk stuff
-        val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
-            (trigger, name) =>
-            trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
+            // create whisk stuff
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
+                (trigger, name) =>
+                trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
                     "trigger_payload" -> "alarmTest".toJson,
                     "cron" -> "* * * * * *".toJson,
                     "maxTriggers" -> 3.toJson))
-        }
-        feedCreationResult.stdout should include("ok")
+            }
+            feedCreationResult.stdout should include("ok")
 
-        // get activation list of the trigger
-        val activations = wsk.activation.pollFor(N = 4, Some(triggerName)).length
-        println(s"Found activation size: $activations")
-        activations should be(3)
+            assetHelper.withCleaner(wsk.action, defaultActionName) { (action, name) =>
+                action.create(name, defaultAction)
+            }
+            assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
+                rule.create(name, trigger = triggerName, action = defaultActionName)
+            }
+
+            // get activation list of the trigger
+            val activations = wsk.activation.pollFor(N = 4, Some(triggerName)).length
+            println(s"Found activation size: $activations")
+            activations should be(3)
     }
 
     it should "return error message when alarm action does not include cron parameter" in withAssetCleaner(wskprops) {

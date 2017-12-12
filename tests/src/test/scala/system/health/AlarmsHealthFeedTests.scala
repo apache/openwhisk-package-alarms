@@ -18,11 +18,11 @@ package system.health
 
 import java.time.{Clock, Instant}
 
-import common.{TestHelpers, Wsk, WskProps, WskTestHelpers}
+import common._
 import org.junit.runner.RunWith
-import org.scalatest.{FlatSpec, Inside}
 import org.scalatest.junit.JUnitRunner
-import spray.json.DefaultJsonProtocol.{IntJsonFormat, LongJsonFormat, StringJsonFormat, BooleanJsonFormat}
+import org.scalatest.{FlatSpec, Inside}
+import spray.json.DefaultJsonProtocol.{BooleanJsonFormat, IntJsonFormat, LongJsonFormat, StringJsonFormat}
 import spray.json.{JsObject, JsString, pimpAny}
 
 /**
@@ -38,12 +38,17 @@ class AlarmsHealthFeedTests
     val wskprops = WskProps()
     val wsk = new Wsk
 
+
+    val defaultAction = Some(TestUtils.getTestActionFilename("hello.js"))
+    val defaultActionName = "hello"
+
     behavior of "Alarms Health tests"
 
     it should "bind alarm package and fire periodic trigger using cron feed" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
             val packageName = "dummyAlarmsPackage"
 
             // the package alarms should be there
@@ -66,6 +71,13 @@ class AlarmsHealthFeedTests
             }
             feedCreationResult.stdout should include("ok")
 
+            assetHelper.withCleaner(wsk.action, defaultActionName) { (action, name) =>
+                action.create(name, defaultAction)
+            }
+            assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
+                rule.create(name, trigger = triggerName, action = defaultActionName)
+            }
+
             println("waiting for triggers")
             val activations = wsk.activation.pollFor(N = 5, Some(triggerName), retries = 30).length
             println(s"Found activation size (should be at least 5): $activations")
@@ -82,7 +94,7 @@ class AlarmsHealthFeedTests
             // recreate the trigger now without the feed
             wsk.trigger.create(triggerName)
 
-            // get activation list again, should be same as before sleeping
+            // get activation list again, should be same as before waiting
             println("confirming no new triggers")
             val activationsAfterWait = wsk.activation.pollFor(N = activationsAfterDelete + 1, Some(triggerName)).length
             println(s"Found activation size after wait: $activationsAfterWait")
@@ -94,6 +106,7 @@ class AlarmsHealthFeedTests
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
             val packageName = "dummyAlarmsPackage"
 
             // the package alarms should be there
@@ -118,8 +131,15 @@ class AlarmsHealthFeedTests
             }
             feedCreationResult.stdout should include("ok")
 
+            assetHelper.withCleaner(wsk.action, defaultActionName) { (action, name) =>
+                action.create(name, defaultAction)
+            }
+            assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
+                rule.create(name, trigger = triggerName, action = defaultActionName)
+            }
+
             println("waiting for trigger")
-            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 30).length
+            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 90).length
             println(s"Found activation size (should be 1): $activations")
             activations should be(1)
     }
@@ -191,6 +211,7 @@ class AlarmsHealthFeedTests
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
             val packageName = "dummyAlarmsPackage"
 
             // the package alarms should be there
@@ -217,13 +238,20 @@ class AlarmsHealthFeedTests
             }
             feedCreationResult.stdout should include("ok")
 
+            assetHelper.withCleaner(wsk.action, defaultActionName) { (action, name) =>
+                action.create(name, defaultAction)
+            }
+            assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
+                rule.create(name, trigger = triggerName, action = defaultActionName)
+            }
+
             println("waiting for triggers")
-            val activations = wsk.activation.pollFor(N = 20, Some(triggerName), retries = 45).length
+            val activations = wsk.activation.pollFor(N = 20, Some(triggerName), retries = 60).length
             println(s"Found activation size (should be at least 5): $activations")
             activations should be >= 5
 
 
-            // get activation list again, should be same as before sleeping
+            // get activation list again, should be same as before waiting
             println("confirming no new triggers")
             val activationsAfterWait = wsk.activation.pollFor(N = activations + 1, Some(triggerName)).length
             println(s"Found activation size after wait: $activationsAfterWait")
@@ -235,6 +263,7 @@ class AlarmsHealthFeedTests
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
             val packageName = "dummyAlarmsPackage"
 
             // the package alarms should be there
@@ -261,8 +290,15 @@ class AlarmsHealthFeedTests
             }
             feedCreationResult.stdout should include("ok")
 
+            assetHelper.withCleaner(wsk.action, defaultActionName) { (action, name) =>
+                action.create(name, defaultAction)
+            }
+            assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
+                rule.create(name, trigger = triggerName, action = defaultActionName)
+            }
+
             println("waiting for start date")
-            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 45).length
+            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 90).length
             println(s"Found activation size (should be 1): $activations")
             activations should be(1)
 
