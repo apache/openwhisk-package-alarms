@@ -18,7 +18,7 @@ package system.redundancy
 
 import com.jayway.restassured.RestAssured
 import com.jayway.restassured.config.SSLConfig
-import common.{WhiskProperties, Wsk, WskProps, WskTestHelpers}
+import common._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
@@ -52,37 +52,48 @@ class AlarmsRedundancyTests
 
     var endpointPrefix = s"https://$user:$password@$edgeHost/alarmstrigger/worker0/"
 
+    val defaultAction = Some(TestUtils.getTestActionFilename("hello.js"))
+    val defaultActionName = "hello"
+
     behavior of "Alarms redundancy tests"
 
     it should "fire alarms trigger before the swap" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
-        implicit val wskprops = wp // shadow global props and make implicit
-        val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
-        val packageName = "dummyAlarmsPackage"
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
 
-        // the package alarms should be there
-        val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
-        println("fetched package alarms")
-        packageGetResult.stdout should include("ok")
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
 
-        // create package binding
-        assetHelper.withCleaner(wsk.pkg, packageName) {
-            (pkg, name) => pkg.bind("/whisk.system/alarms", name)
-        }
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
+            }
 
-        // create whisk stuff
-        val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
-            (trigger, name) =>
-            trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
+            // create whisk stuff
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
+                (trigger, name) =>
+                trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
                     "trigger_payload" -> "alarmTest".toJson,
                     "cron" -> "* * * * * *".toJson))
-        }
-        feedCreationResult.stdout should include("ok")
+            }
+            feedCreationResult.stdout should include("ok")
 
-        println("waiting for triggers")
-        val activations = wsk.activation.pollFor(N = 3, Some(triggerName)).length
-        println(s"Found activation size (should be at least 3): $activations")
-        activations should be >= 3
+            assetHelper.withCleaner(wsk.action, defaultActionName) { (action, name) =>
+                action.create(name, defaultAction)
+            }
+            assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
+                rule.create(name, trigger = triggerName, action = defaultActionName)
+            }
+
+            println("waiting for triggers")
+            val activations = wsk.activation.pollFor(N = 3, Some(triggerName)).length
+            println(s"Found activation size (should be at least 3): $activations")
+            activations should be >= 3
     }
 
 
@@ -111,7 +122,8 @@ class AlarmsRedundancyTests
     it should "fire alarms trigger again after the swap" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-        val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
             val packageName = "dummyAlarmsPackage"
 
             // the package alarms should be there
@@ -132,6 +144,13 @@ class AlarmsRedundancyTests
                         "cron" -> "* * * * * *".toJson))
             }
             feedCreationResult.stdout should include("ok")
+
+            assetHelper.withCleaner(wsk.action, defaultActionName) { (action, name) =>
+                action.create(name, defaultAction)
+            }
+            assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
+                rule.create(name, trigger = triggerName, action = defaultActionName)
+            }
 
             println("waiting for triggers")
             val activations = wsk.activation.pollFor(N = 3, Some(triggerName)).length
