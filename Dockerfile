@@ -22,4 +22,4 @@ ADD provider/. /alarmsTrigger/
 
 EXPOSE 8080
 
-CMD ["/bin/bash", "-c", "node /alarmsTrigger/app.js >> /logs/alarmsTrigger_logs.log 2>&1"]
+CMD ["/bin/bash", "-c", "node /alarmsTrigger/app.js"]
