@@ -182,16 +182,119 @@ function main(params) {
             });
         });
     }
+    else if (params.__ow_method === "put") {
+
+        return new Promise(function (resolve, reject) {
+            var updatedParams = {};
+
+            common.verifyTriggerAuth(triggerURL, params.authKey, false)
+            .then(() => {
+                db = new Database(params.DB_URL, params.DB_NAME);
+                return db.getTrigger(triggerID);
+            })
+            .then(trigger => {
+                if (trigger.status && trigger.status.reason && trigger.status.reason.kind === 'ADMIN') {
+                    return reject(common.sendError(400, `${params.triggerName} cannot be updated because it was disabled by an admin.  Please contact support for further assistance`));
+                }
+
+                if (params.trigger_payload) {
+                    updatedParams.payload = constructPayload(params.trigger_payload);
+                }
+
+                if (trigger.date) {
+                    if (params.date) {
+                        var date = validateDate(params.date, 'date');
+                        if (date !== params.date) {
+                            return reject(common.sendError(400, date));
+                        }
+                        updatedParams.date = date;
+                    }
+                }
+                else {
+                    if (trigger.minutes) {
+                        if (params.minutes) {
+                            if (+params.minutes !== parseInt(params.minutes)) {
+                                return reject(common.sendError(400, 'the minutes parameter must be an integer'));
+                            }
+                            var minutesParam = parseInt(params.minutes);
+
+                            if (minutesParam <= 0) {
+                                return reject(common.sendError(400, 'the minutes parameter must be an integer greater than zero'));
+                            }
+                            updatedParams.minutes = minutesParam;
+                        }
+                    }
+                    else {
+                        if (params.cron) {
+                            try {
+                                new CronJob(params.cron, function() {});
+                            } catch (ex) {
+                                return reject(common.sendError(400, `cron pattern '${params.cron}' is not valid`));
+                            }
+                            updatedParams.cron = params.cron;
+                        }
+                    }
+
+                    if (params.startDate) {
+                        var startDate = validateDate(params.startDate, 'startDate');
+                        if (startDate !== params.startDate) {
+                            return reject(common.sendError(400, startDate));
+                        }
+                        updatedParams.startDate = startDate;
+                    }
+
+                    if (params.stopDate) {
+                        var stopDate = validateDate(params.stopDate, 'stopDate', params.startDate || trigger.startDate);
+                        if (stopDate !== params.stopDate) {
+                            return reject(common.sendError(400, stopDate));
+                        }
+                        updatedParams.stopDate = stopDate;
+                    }
+                    else if (params.startDate && trigger.stopDate) {
+                        //need to verify that new start date is before existing stop date
+                        if (new Date(params.startDate).getTime() >= new Date(trigger.stopDate).getTime()) {
+                            return reject(common.sendError(400, `startDate parameter '${params.startDate}' must be less than the stopDate parameter '${trigger.stopDate}'`));
+                        }
+
+                    }
+                }
+
+                if (Object.keys(updatedParams).length === 0) {
+                    return reject(common.sendError(400, 'no updatable parameters were specified'));
+                }
+                return db.disableTrigger(trigger._id, trigger, 0, 'updating');
+            })
+            .then(triggerID => {
+                return db.getTrigger(triggerID, false);
+            })
+            .then(trigger => {
+                return db.updateTrigger(trigger._id, trigger, updatedParams, 0);
+            })
+            .then(() => {
+                resolve({
+                    statusCode: 200,
+                    headers: {'Content-Type': 'application/json'},
+                    body: new Buffer(JSON.stringify({'status': 'success'})).toString('base64')
+                });
+            })
+            .catch(err => {
+                reject(err);
+            });
+        });
+    }
     else if (params.__ow_method === "delete") {
 
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerURL, params.authKey, true)
             .then(() => {
                 db = new Database(params.DB_URL, params.DB_NAME);
-                return db.disableTrigger(triggerID, 0);
+                return db.getTrigger(triggerID);
             })
-            .then(id => {
-                return db.deleteTrigger(id, 0);
+            .then(trigger => {
+                return db.disableTrigger(trigger._id, trigger, 0, 'deleting');
+            })
+            .then(triggerID => {
+                return db.deleteTrigger(triggerID, 0);
             })
             .then(() => {
                 resolve({
@@ -210,6 +313,20 @@ function main(params) {
     }
 }
 
+function constructPayload(payload) {
+
+    var updatedPayload;
+    if (payload) {
+        if (typeof payload === 'string') {
+            updatedPayload = {payload: payload};
+        }
+        if (typeof payload === 'object') {
+            updatedPayload = payload;
+        }
+    }
+    return updatedPayload;
+}
+
 function validateDate(date, paramName, startDate) {
 
     var dateObject = new Date(date);
@@ -221,7 +338,7 @@ function validateDate(date, paramName, startDate) {
         return `${paramName} parameter '${date}' must be in the future`;
     }
     else if (startDate && dateObject <= new Date(startDate).getTime()) {
-        return `${paramName} parameter '${date}' must be greater than the startDate parameter ${startDate}`;
+        return `${paramName} parameter '${date}' must be greater than the startDate parameter '${startDate}'`;
     }
     else {
         return date;

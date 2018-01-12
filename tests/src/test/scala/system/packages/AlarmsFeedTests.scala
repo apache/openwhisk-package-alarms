@@ -17,12 +17,12 @@
 package system.packages
 
 import org.junit.runner.RunWith
-import org.scalatest.FlatSpec
+import org.scalatest.{FlatSpec, Inside}
 import org.scalatest.junit.JUnitRunner
 import common._
 import spray.json.DefaultJsonProtocol.IntJsonFormat
 import spray.json.DefaultJsonProtocol.{LongJsonFormat, StringJsonFormat}
-import spray.json.pimpAny
+import spray.json.{JsObject, JsString, pimpAny}
 
 /**
  * Tests for alarms trigger service
@@ -37,7 +37,6 @@ class AlarmsFeedTests
     val wsk = new Wsk
 
     val defaultAction = Some(TestUtils.getTestActionFilename("hello.js"))
-    val defaultActionName = "hello"
 
     behavior of "Alarms trigger service"
 
@@ -46,6 +45,7 @@ class AlarmsFeedTests
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
             val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
+            val actionName = s"dummyAlarmsAction-${System.currentTimeMillis}"
             val packageName = "dummyAlarmsPackage"
 
             // the package alarms should be there
@@ -58,21 +58,23 @@ class AlarmsFeedTests
                 (pkg, name) => pkg.bind("/whisk.system/alarms", name)
             }
 
-            // create whisk stuff
-            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
+            // create action
+            assetHelper.withCleaner(wsk.action, actionName) { (action, name) =>
+                action.create(name, defaultAction)
+            }
+
+            // create trigger with feed
+            assetHelper.withCleaner(wsk.trigger, triggerName) {
                 (trigger, name) =>
                 trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
                     "trigger_payload" -> "alarmTest".toJson,
                     "cron" -> "* * * * * *".toJson,
                     "maxTriggers" -> 3.toJson))
             }
-            feedCreationResult.stdout should include("ok")
 
-            assetHelper.withCleaner(wsk.action, defaultActionName) { (action, name) =>
-                action.create(name, defaultAction)
-            }
+            // create rule
             assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
-                rule.create(name, trigger = triggerName, action = defaultActionName)
+                rule.create(name, trigger = triggerName, action = actionName)
             }
 
             // get activation list of the trigger
@@ -99,7 +101,7 @@ class AlarmsFeedTests
                 (pkg, name) => pkg.bind("/whisk.system/alarms", name)
             }
 
-            // create whisk stuff
+            // create trigger with feed
             val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
@@ -128,7 +130,7 @@ class AlarmsFeedTests
                 (pkg, name) => pkg.bind("/whisk.system/alarms", name)
             }
 
-            // create whisk stuff
+            // create trigger with feed
             val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
@@ -159,7 +161,7 @@ class AlarmsFeedTests
 
             val cron = System.currentTimeMillis
 
-            // create whisk stuff
+            // create trigger with feed
             val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
@@ -189,7 +191,7 @@ class AlarmsFeedTests
                 (pkg, name) => pkg.bind("/whisk.system/alarms", name)
             }
 
-            // create whisk stuff
+            // create trigger with feed
             val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
@@ -221,7 +223,7 @@ class AlarmsFeedTests
 
             val pastDate = System.currentTimeMillis - 5000
 
-            // create whisk stuff
+            // create trigger with feed
             val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
@@ -253,7 +255,7 @@ class AlarmsFeedTests
 
             val pastDate = System.currentTimeMillis - 5000
 
-            // create whisk stuff
+            // create trigger with feed
             val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
@@ -286,7 +288,7 @@ class AlarmsFeedTests
             val stopDate = System.currentTimeMillis + 5000
             val startDate = stopDate
 
-            // create whisk stuff
+            // create trigger with feed
             val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
@@ -317,7 +319,7 @@ class AlarmsFeedTests
                 (pkg, name) => pkg.bind("/whisk.system/alarms", name)
             }
 
-            // create whisk stuff
+            // create trigger with feed
             val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
@@ -346,7 +348,7 @@ class AlarmsFeedTests
                 (pkg, name) => pkg.bind("/whisk.system/alarms", name)
             }
 
-            // create whisk stuff
+            // create trigger with feed
             val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
@@ -356,5 +358,99 @@ class AlarmsFeedTests
             }
             feedCreationResult.stderr should include("the minutes parameter must be an integer")
 
+    }
+
+    it should "return error message when alarms trigger update contains no updatable parameters" in withAssetCleaner(wskprops) {
+        (wp, assetHelper) =>
+            implicit val wskProps = wp
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
+
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
+
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
+            }
+
+            val futureDate = System.currentTimeMillis + (1000 * 20)
+
+            // create trigger feed
+            println(s"Creating trigger: $triggerName")
+            assetHelper.withCleaner(wsk.trigger, triggerName) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/once"), parameters = Map(
+                        "date" -> futureDate.toJson))
+            }
+
+            val actionName = s"$packageName/alarm"
+            val updatedStartDate = System.currentTimeMillis + (1000 * 20)
+            val updatedStopDate = updatedStartDate + (1000 * 10)
+
+            val updateRunAction = wsk.action.invoke(actionName, parameters = Map(
+                "triggerName" -> triggerName.toJson,
+                "lifecycleEvent" -> "UPDATE".toJson,
+                "authKey" -> wskProps.authKey.toJson,
+                "startDate" -> updatedStartDate.toJson,
+                "stopDate" -> updatedStopDate.toJson
+            ))
+
+            withActivation(wsk.activation, updateRunAction) {
+                activation =>
+                    activation.response.success shouldBe false
+                    val error = activation.response.result.get.fields("error").asJsObject
+                    error.fields("error") shouldBe JsString("no updatable parameters were specified")
+            }
+    }
+
+    it should "return error message when startDate is updated to be greater than the stopDate" in withAssetCleaner(wskprops) {
+        (wp, assetHelper) =>
+            implicit val wskProps = wp
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
+
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
+
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
+            }
+
+            val minutes = 1
+            val startDate = System.currentTimeMillis + (1000 * 20)
+            val stopDate = startDate + (1000 * 10)
+
+            // create trigger feed
+            println(s"Creating trigger: $triggerName")
+            assetHelper.withCleaner(wsk.trigger, triggerName) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/interval"), parameters = Map(
+                        "minutes" -> minutes.toJson,
+                        "startDate" -> startDate.toJson,
+                        "stopDate" -> stopDate.toJson))
+            }
+
+            val actionName = s"$packageName/alarm"
+            val updatedStartDate = System.currentTimeMillis + (1000 * 2000)
+
+            val updateRunAction = wsk.action.invoke(actionName, parameters = Map(
+                "triggerName" -> triggerName.toJson,
+                "lifecycleEvent" -> "UPDATE".toJson,
+                "authKey" -> wskProps.authKey.toJson,
+                "startDate" -> updatedStartDate.toJson
+            ))
+
+            withActivation(wsk.activation, updateRunAction) {
+                activation =>
+                    activation.response.success shouldBe false
+                    val error = activation.response.result.get.fields("error").asJsObject
+                    error.fields("error") shouldBe JsString(s"startDate parameter '${updatedStartDate}' must be less than the stopDate parameter '${stopDate}'")
+            }
     }
 }
