@@ -16,13 +16,12 @@
  */
 package system.packages
 
-import org.junit.runner.RunWith
-import org.scalatest.{FlatSpec, Inside}
-import org.scalatest.junit.JUnitRunner
 import common._
-import spray.json.DefaultJsonProtocol.IntJsonFormat
-import spray.json.DefaultJsonProtocol.{LongJsonFormat, StringJsonFormat}
-import spray.json.{JsObject, JsString, pimpAny}
+import org.junit.runner.RunWith
+import org.scalatest.FlatSpec
+import org.scalatest.junit.JUnitRunner
+import spray.json.DefaultJsonProtocol.{IntJsonFormat, LongJsonFormat, StringJsonFormat}
+import spray.json.{JsString, pimpAny}
 
 /**
  * Tests for alarms trigger service
