@@ -10,7 +10,7 @@ RUN apt-get update --fix-missing && \
   apt-get install -y curl && \
   apt-get update && \
   apt-get remove -y nodejs && \
-  curl -sL https://deb.nodesource.com/setup_6.x | bash - && \
+  curl -sL https://deb.nodesource.com/setup_8.x | bash - && \
   apt-get install -y nodejs
 
 # only package.json
