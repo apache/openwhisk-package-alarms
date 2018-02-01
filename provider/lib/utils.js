@@ -5,12 +5,10 @@ var constants = require('./constants.js');
 var DateAlarm = require('./dateAlarm.js');
 var CronAlarm = require('./cronAlarm.js');
 var IntervalAlarm = require('./intervalAlarm.js');
+var Sanitizer = require('./sanitizer');
 
-module.exports = function(
-  logger,
-  triggerDB,
-  redisClient
-) {
+module.exports = function(logger, triggerDB, redisClient) {
+
     this.module = 'utils';
     this.triggers = {};
     this.endpointAuth = process.env.ENDPOINT_AUTH;
@@ -22,6 +20,8 @@ module.exports = function(
     this.redisClient = redisClient;
     this.redisHash = triggerDB.config.db + '_' + this.worker;
     this.redisKey = constants.REDIS_KEY;
+    this.uriHost ='https://' + this.routerHost + ':443';
+    this.sanitizer = new Sanitizer(logger, triggerDB, this.uriHost);
 
     var retryDelay = constants.RETRY_DELAY;
     var retryAttempts = constants.RETRY_ATTEMPTS;
@@ -46,6 +46,9 @@ module.exports = function(
             }
         };
 
+        newTrigger.uri = utils.uriHost + '/api/v1/namespaces/' + newTrigger.namespace + '/triggers/' + newTrigger.name;
+        newTrigger.triggerID = triggerIdentifier;
+
         var alarm;
         if (newTrigger.date) {
             alarm = new DateAlarm(logger, newTrigger);
@@ -63,24 +66,22 @@ module.exports = function(
     this.fireTrigger = function(dataTrigger) {
         var method = 'fireTrigger';
 
-        var triggerIdentifier = utils.getTriggerIdentifier(dataTrigger.apikey, dataTrigger.namespace, dataTrigger.name);
-        var host = 'https://' + utils.routerHost + ':443';
+        var triggerIdentifier = dataTrigger.triggerID;
         var auth = dataTrigger.apikey.split(':');
-        var uri = host + '/api/v1/namespaces/' + dataTrigger.namespace + '/triggers/' + dataTrigger.name;
 
         logger.info(method, 'Alarm fired for', triggerIdentifier, 'attempting to fire trigger');
-        utils.postTrigger(dataTrigger, uri, auth, 0)
+        utils.postTrigger(dataTrigger, auth, 0)
         .then(triggerId => {
             logger.info(method, 'Trigger', triggerId, 'was successfully fired');
-            utils.disableExtinctTriggers(triggerIdentifier, dataTrigger);
+            utils.handleExpiredTriggers(dataTrigger);
         })
         .catch(err => {
             logger.error(method, err);
-            utils.disableExtinctTriggers(triggerIdentifier, dataTrigger);
+            utils.handleExpiredTriggers(dataTrigger);
         });
     };
 
-    this.postTrigger = function(dataTrigger, uri, auth, retryCount) {
+    this.postTrigger = function(dataTrigger, auth, retryCount) {
         var method = 'postTrigger';
 
         return new Promise(function(resolve, reject) {
@@ -92,7 +93,7 @@ module.exports = function(
 
             request({
                 method: 'post',
-                uri: uri,
+                uri: dataTrigger.uri,
                 auth: {
                     user: auth[0],
                     pass: auth[1]
@@ -100,8 +101,8 @@ module.exports = function(
                 json: dataTrigger.payload
             }, function(error, response) {
                 try {
-                    var triggerIdentifier = utils.getTriggerIdentifier(dataTrigger.apikey, dataTrigger.namespace, dataTrigger.name);
-                    logger.info(method, triggerIdentifier, 'http post request, STATUS:', response ? response.statusCode : response);
+                    var triggerIdentifier = dataTrigger.triggerID;
+                    logger.info(method, triggerIdentifier, 'http post request, STATUS:', response ? response.statusCode : undefined);
 
                     if (error || response.statusCode >= 400) {
                         // only manage trigger fires if they are not infinite
@@ -119,7 +120,7 @@ module.exports = function(
                             if (retryCount < retryAttempts) {
                                 logger.info(method, 'attempting to fire trigger again', triggerIdentifier, 'Retry Count:', (retryCount + 1));
                                 setTimeout(function () {
-                                    utils.postTrigger(dataTrigger, uri, auth, (retryCount + 1))
+                                    utils.postTrigger(dataTrigger, auth, (retryCount + 1))
                                     .then(triggerId => {
                                         resolve(triggerId);
                                     })
@@ -148,12 +149,30 @@ module.exports = function(
             [HttpStatus.REQUEST_TIMEOUT, HttpStatus.TOO_MANY_REQUESTS].indexOf(statusCode) === -1);
     };
 
-    this.disableExtinctTriggers = function(triggerIdentifier, dataTrigger) {
-        var method = 'disableExtinctTriggers';
+    this.handleExpiredTriggers = function(dataTrigger) {
+        var method = 'handleExpiredTriggers';
 
+        var triggerIdentifier = dataTrigger.triggerID;
         if (dataTrigger.date) {
-            utils.disableTrigger(triggerIdentifier, undefined, 'Automatically disabled after firing once');
-            logger.info(method, 'the fire once date has expired, disabled', triggerIdentifier);
+            if (dataTrigger.deleteAfterFire && dataTrigger.deleteAfterFire !== 'false') {
+                utils.stopTrigger(triggerIdentifier);
+
+                //delete trigger feed from database
+                utils.sanitizer.deleteTriggerFromDB(triggerIdentifier, 0);
+
+                //check if trigger and all associated rules should be deleted
+                if (dataTrigger.deleteAfterFire === 'rules') {
+                    utils.sanitizer.deleteTriggerAndRules(dataTrigger);
+                }
+                else {
+                    //delete the trigger
+                    utils.sanitizer.deleteTrigger(dataTrigger);
+                }
+            }
+            else {
+                utils.disableTrigger(triggerIdentifier, undefined, 'Automatically disabled after firing once');
+                logger.info(method, 'the fire once date has expired, disabled', triggerIdentifier);
+            }
         }
         else if (dataTrigger.stopDate) {
             //check if the next scheduled trigger is after the stop date
@@ -199,14 +218,14 @@ module.exports = function(
             }
             else {
                 logger.info(method, 'could not find', triggerIdentifier, 'in database');
-                //make sure it is removed from memory as well
-                utils.deleteTrigger(triggerIdentifier);
+                //make sure it is already stopped
+                utils.stopTrigger(triggerIdentifier);
             }
         });
     };
 
-    this.deleteTrigger = function(triggerIdentifier) {
-        var method = 'deleteTrigger';
+    this.stopTrigger = function (triggerIdentifier) {
+        var method = 'stopTrigger';
 
         if (utils.triggers[triggerIdentifier]) {
             if (utils.triggers[triggerIdentifier].cronHandle) {
@@ -218,10 +237,6 @@ module.exports = function(
             delete utils.triggers[triggerIdentifier];
             logger.info(method, 'trigger', triggerIdentifier, 'successfully deleted from memory');
         }
-    };
-
-    this.getTriggerIdentifier = function(apikey, namespace, name) {
-        return apikey + '/' + namespace + '/' + name;
     };
 
     this.initAllTriggers = function() {
@@ -242,14 +257,13 @@ module.exports = function(
                         var namespace = doc.namespace;
                         var name = doc.name;
                         var apikey = doc.apikey;
-                        var host = 'https://' + utils.routerHost + ':' + 443;
-                        var triggerURL = host + '/api/v1/namespaces/' + namespace + '/triggers/' + name;
+                        var uri = utils.uriHost + '/api/v1/namespaces/' + namespace + '/triggers/' + name;
                         var auth = apikey.split(':');
 
                         logger.info(method, 'Checking if trigger', triggerIdentifier, 'still exists');
                         request({
                             method: 'get',
-                            url: triggerURL,
+                            url: uri,
                             auth: {
                                 user: auth[0],
                                 pass: auth[1]
@@ -308,7 +322,7 @@ module.exports = function(
 
                 if (utils.triggers[triggerIdentifier]) {
                     if (doc.status && doc.status.active === false) {
-                        utils.deleteTrigger(triggerIdentifier);
+                        utils.stopTrigger(triggerIdentifier);
                     }
                 }
                 else {

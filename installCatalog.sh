@@ -71,7 +71,7 @@ $WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" a
 
 $WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" alarms/once "$PACKAGE_HOME/action/alarmFeed.zip" \
      -a description 'Fire trigger once when alarm occurs' \
-     -a parameters '[ {"name":"date", "required":true} ]' \
+     -a parameters '[ {"name":"date", "required":true}, {"name":"deleteAfterFire", "required":false} ]' \
      -a feed true \
      -p fireOnce true
 

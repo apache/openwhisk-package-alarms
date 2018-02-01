@@ -35,8 +35,6 @@ class AlarmsHealthFeedTests
 
     val wskprops = WskProps()
     val wsk = new Wsk
-
-
     val defaultAction = Some(TestUtils.getTestActionFilename("hello.js"))
 
     behavior of "Alarms Health tests"
