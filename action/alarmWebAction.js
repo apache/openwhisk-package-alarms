@@ -72,6 +72,10 @@ function main(params) {
 
                 try {
                     cronHandle = new CronJob(params.cron, function() {});
+                    //validate cron granularity if 5 fields are allowed instead of 6
+                    if (params.limitCronFields && hasSecondsGranularity(params.cron)) {
+                        return common.sendError(400, 'cron pattern is limited to 5 fields with 1 minute as the finest granularity');
+                    }
                     newTrigger.cron = params.cron;
                 } catch(ex) {
                     return common.sendError(400, `cron pattern '${params.cron}' is not valid`);
@@ -198,7 +202,7 @@ function main(params) {
                 }
 
                 if (params.trigger_payload) {
-                    updatedParams.payload = constructPayload(params.trigger_payload);
+                    updatedParams.payload = common.constructPayload(params.trigger_payload);
                 }
 
                 if (trigger.date) {
@@ -228,6 +232,10 @@ function main(params) {
                         if (params.cron) {
                             try {
                                 new CronJob(params.cron, function() {});
+                                //validate cron granularity if 5 fields are allowed instead of 6
+                                if (params.limitCronFields && hasSecondsGranularity(params.cron)) {
+                                    return common.sendError(400, 'cron pattern is limited to 5 fields with 1 minute as the finest granularity');
+                                }
                             } catch (ex) {
                                 return reject(common.sendError(400, `cron pattern '${params.cron}' is not valid`));
                             }
@@ -313,20 +321,6 @@ function main(params) {
     }
 }
 
-function constructPayload(payload) {
-
-    var updatedPayload;
-    if (payload) {
-        if (typeof payload === 'string') {
-            updatedPayload = {payload: payload};
-        }
-        if (typeof payload === 'object') {
-            updatedPayload = payload;
-        }
-    }
-    return updatedPayload;
-}
-
 function validateDate(date, paramName, startDate) {
 
     var dateObject = new Date(date);
@@ -344,6 +338,17 @@ function validateDate(date, paramName, startDate) {
         return date;
     }
 
+}
+
+function hasSecondsGranularity(cron) {
+
+    var fields = (cron + '').trim().split(/\s+/);
+
+    if (fields.length > 5 && fields[fields.length - 6] !== '0') {
+        return true;
+    }
+
+    return false;
 }
 
 exports.main = main;
