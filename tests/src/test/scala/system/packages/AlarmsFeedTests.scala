@@ -20,7 +20,7 @@ import common._
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-import spray.json.DefaultJsonProtocol.{IntJsonFormat, LongJsonFormat, StringJsonFormat}
+import spray.json.DefaultJsonProtocol.{BooleanJsonFormat, IntJsonFormat, LongJsonFormat, StringJsonFormat}
 import spray.json.{JsString, pimpAny}
 
 /**
@@ -451,5 +451,34 @@ class AlarmsFeedTests
                     val error = activation.response.result.get.fields("error").asJsObject
                     error.fields("error") shouldBe JsString(s"startDate parameter '${updatedStartDate}' must be less than the stopDate parameter '${stopDate}'")
             }
+    }
+
+    it should "return error message when limitCronFields is true and 6 cron fields are used" in withAssetCleaner(wskprops) {
+        (wp, assetHelper) =>
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "alarm"
+
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
+
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
+            }
+
+            // create trigger with feed
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                        "cron" -> "* * * * * *".toJson,
+                        "limitCronFields" -> true.toJson),
+                        expectedExitCode = 246)
+            }
+            feedCreationResult.stderr should include("cron pattern is limited to 5 fields with 1 minute as the finest granularity")
+
     }
 }

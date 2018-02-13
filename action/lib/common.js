@@ -104,11 +104,26 @@ function sendError(statusCode, error, message) {
     };
 }
 
+function constructPayload(payload) {
+
+    var updatedPayload;
+    if (payload) {
+        if (typeof payload === 'string') {
+            updatedPayload = {payload: payload};
+        }
+        if (typeof payload === 'object') {
+            updatedPayload = payload;
+        }
+    }
+    return updatedPayload;
+}
+
 
 module.exports = {
     'requestHelper': requestHelper,
     'createWebParams': createWebParams,
     'verifyTriggerAuth': verifyTriggerAuth,
     'parseQName': parseQName,
-    'sendError': sendError
+    'sendError': sendError,
+    'constructPayload': constructPayload
 };
