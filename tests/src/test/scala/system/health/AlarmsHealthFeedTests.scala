@@ -16,8 +16,6 @@
  */
 package system.health
 
-import java.time.{Clock, Instant}
-
 import common._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
