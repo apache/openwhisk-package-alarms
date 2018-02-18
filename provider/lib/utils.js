@@ -165,8 +165,14 @@ module.exports = function(logger, triggerDB, redisClient) {
                     utils.sanitizer.deleteTriggerAndRules(dataTrigger);
                 }
                 else {
-                    //delete the trigger
-                    utils.sanitizer.deleteTrigger(dataTrigger);
+                    var auth = dataTrigger.apikey.split(':');
+                    utils.sanitizer.deleteTrigger(dataTrigger, auth, 0)
+                    .then((info) => {
+                        logger.info(method, triggerIdentifier, info);
+                    })
+                    .catch(err => {
+                        logger.error(method, triggerIdentifier, err);
+                    });
                 }
             }
             else {
