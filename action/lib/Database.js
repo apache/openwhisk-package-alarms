@@ -63,12 +63,12 @@ module.exports = function(dbURL, dbName) {
 
         return new Promise(function(resolve, reject) {
 
-            utilsDB.db.get(triggerID, function (err, existing) {
+            var qName = triggerID.split('/');
+            var id = retry ? triggerID : qName[0] + '/_/' + qName[2];
+            utilsDB.db.get(id, function (err, existing) {
                 if (err) {
                     if (retry) {
-                        var parts = triggerID.split('/');
-                        var id = parts[0] + '/_/' + parts[2];
-                        utilsDB.getTrigger(id, false)
+                        utilsDB.getTrigger(triggerID, false)
                         .then(doc => {
                             resolve(doc);
                         })
@@ -76,7 +76,8 @@ module.exports = function(dbURL, dbName) {
                             reject(err);
                         });
                     } else {
-                        reject(common.sendError(err.statusCode, 'could not find the trigger in the database'));
+                        var name = '/' + qName[1] + '/' + qName[2];
+                        reject(common.sendError(err.statusCode, 'could not find trigger ' + name + ' in the database'));
                     }
                 } else {
                     resolve(existing);
@@ -156,7 +157,9 @@ module.exports = function(dbURL, dbName) {
                     });
                 }
                 else {
-                    reject(common.sendError(err.statusCode, 'could not find the trigger in the database'));
+                    var qName = triggerID.split('/');
+                    var name = '/' + qName[1] + '/' + qName[2];
+                    reject(common.sendError(err.statusCode, 'could not find trigger ' + name + ' in the database'));
                 }
             });
         });

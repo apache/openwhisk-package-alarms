@@ -18,6 +18,7 @@ function main(params) {
     var triggerURL = `https://${params.apihost}/api/v1/namespaces/${triggerParts.namespace}/triggers/${triggerParts.name}`;
 
     var workers = params.workers instanceof Array ? params.workers : [];
+    var deleteAfterFireArray = ['false', 'true', 'rules'];
     var db;
 
     if (params.__ow_method === "post") {
@@ -47,6 +48,14 @@ function main(params) {
                 return common.sendError(400, date);
             }
             newTrigger.date = date;
+
+            if (params.deleteAfterFire) {
+                var deleteAfterFire = ('' + params.deleteAfterFire).trim().toLowerCase();
+                if (deleteAfterFireArray.indexOf(deleteAfterFire) === -1) {
+                    return common.sendError(400, 'deleteAfterFire parameter must be one of [false, true, rules].');
+                }
+                newTrigger.deleteAfterFire = deleteAfterFire;
+            }
         }
         else {
             var cronHandle;
@@ -213,6 +222,14 @@ function main(params) {
                         }
                         updatedParams.date = date;
                     }
+
+                    if (params.deleteAfterFire) {
+                        var deleteAfterFire = ('' + params.deleteAfterFire).trim().toLowerCase();
+                        if (deleteAfterFireArray.indexOf(deleteAfterFire) === -1) {
+                            return common.sendError(400, 'deleteAfterFire parameter must be one of [false, true, rules].');
+                        }
+                        newTrigger.deleteAfterFire = deleteAfterFire;
+                    }
                 }
                 else {
                     if (trigger.minutes) {
@@ -344,11 +361,7 @@ function hasSecondsGranularity(cron) {
 
     var fields = (cron + '').trim().split(/\s+/);
 
-    if (fields.length > 5 && fields[fields.length - 6] !== '0') {
-        return true;
-    }
-
-    return false;
+    return fields.length > 5 && fields[fields.length - 6] !== '0';
 }
 
 exports.main = main;

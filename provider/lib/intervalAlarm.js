@@ -8,7 +8,9 @@ module.exports = function(logger, newTrigger) {
         name: newTrigger.name,
         namespace: newTrigger.namespace,
         payload: newTrigger.payload,
-        minutes: newTrigger.minutes
+        minutes: newTrigger.minutes,
+        triggerID: newTrigger.triggerID,
+        uri: newTrigger.uri
     };
 
     this.scheduleAlarm = function(triggerIdentifier, callback) {

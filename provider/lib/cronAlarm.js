@@ -11,7 +11,9 @@ module.exports = function(logger, newTrigger) {
         name: newTrigger.name,
         namespace: newTrigger.namespace,
         payload: newTrigger.payload,
-        cron: newTrigger.cron
+        cron: newTrigger.cron,
+        triggerID: newTrigger.triggerID,
+        uri: newTrigger.uri
     };
 
     this.scheduleAlarm = function(triggerIdentifier, callback) {

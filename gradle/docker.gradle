@@ -37,16 +37,21 @@ if(project.hasProperty('dockerHost')) {
 }
 
 if(project.hasProperty('dockerBuildArgs')) {
-    dockerBuildArg += ['--build-arg', project.dockerBuildArgs]
+    dockerBuildArgs.each { arg  ->
+        dockerBuildArg += ['--build-arg', arg]
+    }
 }
 
-task distDocker << {
+task distDocker {
+    doLast {
     def start = new Date()
     def cmd = dockerBinary + dockerBuildArg + ['-t', dockerImageName, project.buildscript.sourceFile.getParentFile().getAbsolutePath()]
     retry(cmd, dockerRetries, dockerTimeout)
     println("Building '${dockerImageName}' took ${TimeCategory.minus(new Date(), start)}")
 }
-task tagImage << {
+}
+task tagImage {
+    doLast {
     def versionString = (dockerBinary + ['-v']).execute().text
     def matched = (versionString =~ /(\d+)\.(\d+)\.(\d+)/)
 
@@ -59,10 +64,13 @@ task tagImage << {
     }
     retry(dockerBinary + dockerCmd + [dockerImageName, dockerTaggedImageName], dockerRetries, dockerTimeout)
 }
+}
 
-task pushImage << {
+task pushImage {
+    doLast {
     def cmd = dockerBinary + ['push', dockerTaggedImageName]
     retry(cmd, dockerRetries, dockerTimeout)
+}
 }
 pushImage.dependsOn tagImage
 pushImage.onlyIf { dockerRegistry != '' }

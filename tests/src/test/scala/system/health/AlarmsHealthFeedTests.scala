@@ -35,9 +35,8 @@ class AlarmsHealthFeedTests
 
     val wskprops = WskProps()
     val wsk = new Wsk
-
-
     val defaultAction = Some(TestUtils.getTestActionFilename("hello.js"))
+    val maxRetries = System.getProperty("max.retries", "100").toInt
 
     behavior of "Alarms Health tests"
 
@@ -60,8 +59,8 @@ class AlarmsHealthFeedTests
             }
 
             //create action
-            assetHelper.withCleaner(wsk.action, actionName) { (action, name) =>
-                action.create(name, defaultAction)
+            assetHelper.withCleaner(wsk.action, actionName) {
+                (action, name) => action.create(name, defaultAction)
             }
 
             val futureDate = System.currentTimeMillis + (1000 * 20)
@@ -72,18 +71,30 @@ class AlarmsHealthFeedTests
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/once"), parameters = Map(
                         "trigger_payload" -> "alarmTest".toJson,
-                        "date" -> futureDate.toJson))
+                        "date" -> futureDate.toJson,
+                        "deleteAfterFire" -> "rules".toJson))
             }
 
             // create rule
-            assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
-                rule.create(name, trigger = triggerName, action = actionName)
+            assetHelper.withCleaner(wsk.rule, ruleName) {
+                (rule, name) => rule.create(name, trigger = triggerName, action = actionName)
             }
 
             println("waiting for trigger")
-            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 90).length
+            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = maxRetries).length
             println(s"Found activation size (should be 1): $activations")
             activations should be(1)
+
+            // get activation list again, should be same as before waiting
+            println("confirming no new triggers")
+            val afterWait = wsk.activation.pollFor(N = activations + 1, Some(triggerName)).length
+            println(s"Found activation size after wait: $afterWait")
+            println("Activation list after wait should equal with activation list after firing once")
+            afterWait should be(activations)
+
+            //check that assets had been deleted by verifying we can recreate them
+            wsk.trigger.create(triggerName)
+            wsk.rule.create(ruleName, triggerName, actionName)
     }
 
     it should "fire cron trigger using startDate and stopDate" in withAssetCleaner(wskprops) {
@@ -105,8 +116,8 @@ class AlarmsHealthFeedTests
             }
 
             // create action
-            assetHelper.withCleaner(wsk.action, actionName) { (action, name) =>
-                action.create(name, defaultAction)
+            assetHelper.withCleaner(wsk.action, actionName) {
+                (action, name) => action.create(name, defaultAction)
             }
 
             val startDate = System.currentTimeMillis + (1000 * 20)
@@ -123,12 +134,12 @@ class AlarmsHealthFeedTests
             }
 
             // create rule
-            assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
-                rule.create(name, trigger = triggerName, action = actionName)
+            assetHelper.withCleaner(wsk.rule, ruleName) {
+                (rule, name) => rule.create(name, trigger = triggerName, action = actionName)
             }
 
             println("waiting for triggers")
-            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 90).length
+            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = maxRetries).length
             println(s"Found activation size (should be 1): $activations")
             activations should be(1)
 
@@ -160,8 +171,8 @@ class AlarmsHealthFeedTests
             }
 
             // create action
-            assetHelper.withCleaner(wsk.action, actionName) { (action, name) =>
-                action.create(name, defaultAction)
+            assetHelper.withCleaner(wsk.action, actionName) {
+                (action, name) => action.create(name, defaultAction)
             }
 
             val startDate = System.currentTimeMillis + (1000 * 20)
@@ -178,17 +189,17 @@ class AlarmsHealthFeedTests
             }
 
             // create rule
-            assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
-                rule.create(name, trigger = triggerName, action = actionName)
+            assetHelper.withCleaner(wsk.rule, ruleName) {
+                (rule, name) => rule.create(name, trigger = triggerName, action = actionName)
             }
 
             println("waiting for start date")
-            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 90).length
+            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = maxRetries).length
             println(s"Found activation size (should be 1): $activations")
             activations should be(1)
 
             println("waiting for interval")
-            val activationsAfterInterval = wsk.activation.pollFor(N = 2, Some(triggerName), retries = 90).length
+            val activationsAfterInterval = wsk.activation.pollFor(N = 2, Some(triggerName), retries = maxRetries).length
             println(s"Found activation size (should be 2): $activationsAfterInterval")
             activationsAfterInterval should be(2)
     }
@@ -233,8 +244,7 @@ class AlarmsHealthFeedTests
             ))
 
             withActivation(wsk.activation, run) {
-                activation =>
-                    activation.response.success shouldBe true
+                activation => activation.response.success shouldBe true
 
                     inside (activation.response.result) {
                         case Some(result) =>
@@ -294,8 +304,7 @@ class AlarmsHealthFeedTests
             ))
 
             withActivation(wsk.activation, readRunResult) {
-                activation =>
-                    activation.response.success shouldBe true
+                activation => activation.response.success shouldBe true
 
                     inside(activation.response.result) {
                         case Some(result) =>
@@ -321,8 +330,7 @@ class AlarmsHealthFeedTests
             ))
 
             withActivation(wsk.activation, updateRunAction) {
-                activation =>
-                    activation.response.success shouldBe true
+                activation => activation.response.success shouldBe true
             }
 
             val runResult = wsk.action.invoke(actionName, parameters = Map(
@@ -332,8 +340,7 @@ class AlarmsHealthFeedTests
             ))
 
             withActivation(wsk.activation, runResult) {
-                activation =>
-                    activation.response.success shouldBe true
+                activation => activation.response.success shouldBe true
 
                     inside(activation.response.result) {
                         case Some(result) =>
@@ -384,8 +391,7 @@ class AlarmsHealthFeedTests
             ))
 
             withActivation(wsk.activation, readRunResult) {
-                activation =>
-                    activation.response.success shouldBe true
+                activation => activation.response.success shouldBe true
 
                     inside(activation.response.result) {
                         case Some(result) =>
@@ -410,8 +416,7 @@ class AlarmsHealthFeedTests
             ))
 
             withActivation(wsk.activation, updateRunAction) {
-                activation =>
-                    activation.response.success shouldBe true
+                activation => activation.response.success shouldBe true
             }
 
             val runResult = wsk.action.invoke(actionName, parameters = Map(
@@ -421,8 +426,7 @@ class AlarmsHealthFeedTests
             ))
 
             withActivation(wsk.activation, runResult) {
-                activation =>
-                    activation.response.success shouldBe true
+                activation => activation.response.success shouldBe true
 
                     inside(activation.response.result) {
                         case Some(result) =>
@@ -473,8 +477,7 @@ class AlarmsHealthFeedTests
             ))
 
             withActivation(wsk.activation, readRunResult) {
-                activation =>
-                    activation.response.success shouldBe true
+                activation => activation.response.success shouldBe true
 
                     inside(activation.response.result) {
                         case Some(result) =>
@@ -500,8 +503,7 @@ class AlarmsHealthFeedTests
             ))
 
             withActivation(wsk.activation, updateRunAction) {
-                activation =>
-                    activation.response.success shouldBe true
+                activation => activation.response.success shouldBe true
             }
 
             val runResult = wsk.action.invoke(actionName, parameters = Map(
@@ -511,8 +513,7 @@ class AlarmsHealthFeedTests
             ))
 
             withActivation(wsk.activation, runResult) {
-                activation =>
-                    activation.response.success shouldBe true
+                activation => activation.response.success shouldBe true
 
                     inside(activation.response.result) {
                         case Some(result) =>
