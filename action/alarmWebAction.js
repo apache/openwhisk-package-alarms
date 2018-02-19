@@ -173,6 +173,7 @@ function main(params) {
                 };
                 if (doc.date) {
                     body.config.date = doc.date;
+                    body.config.deleteAfterFire = doc.deleteAfterFire;
                 }
                 else {
                     body.config.startDate = doc.startDate;
@@ -226,9 +227,9 @@ function main(params) {
                     if (params.deleteAfterFire) {
                         var deleteAfterFire = ('' + params.deleteAfterFire).trim().toLowerCase();
                         if (deleteAfterFireArray.indexOf(deleteAfterFire) === -1) {
-                            return common.sendError(400, 'deleteAfterFire parameter must be one of [false, true, rules].');
+                            return reject(common.sendError(400, 'deleteAfterFire parameter must be one of [false, true, rules].'));
                         }
-                        newTrigger.deleteAfterFire = deleteAfterFire;
+                        updatedParams.deleteAfterFire = deleteAfterFire;
                     }
                 }
                 else {
@@ -251,7 +252,7 @@ function main(params) {
                                 new CronJob(params.cron, function() {});
                                 //validate cron granularity if 5 fields are allowed instead of 6
                                 if (params.limitCronFields && hasSecondsGranularity(params.cron)) {
-                                    return common.sendError(400, 'cron pattern is limited to 5 fields with 1 minute as the finest granularity');
+                                    return reject(common.sendError(400, 'cron pattern is limited to 5 fields with 1 minute as the finest granularity'));
                                 }
                             } catch (ex) {
                                 return reject(common.sendError(400, `cron pattern '${params.cron}' is not valid`));
@@ -290,7 +291,7 @@ function main(params) {
                 return db.disableTrigger(trigger._id, trigger, 0, 'updating');
             })
             .then(triggerID => {
-                return db.getTrigger(triggerID, false);
+                return db.getTrigger(triggerID);
             })
             .then(trigger => {
                 return db.updateTrigger(trigger._id, trigger, updatedParams, 0);
