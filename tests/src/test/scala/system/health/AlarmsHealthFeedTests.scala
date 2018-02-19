@@ -376,11 +376,12 @@ class AlarmsHealthFeedTests
 
             // create trigger feed
             println(s"Creating trigger: $triggerName")
-            assetHelper.withCleaner(wsk.trigger, triggerName) {
+            assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/once"), parameters = Map(
                         "trigger_payload" -> payload,
-                        "date" -> futureDate.toJson))
+                        "date" -> futureDate.toJson,
+                        "deleteAfterFire" -> "true".toJson))
             }
 
             val actionName = s"$packageName/alarm"
@@ -399,6 +400,7 @@ class AlarmsHealthFeedTests
 
                             config should contain("date" -> futureDate.toJson)
                             config should contain("payload" -> payload)
+                            config should contain("deleteAfterFire" -> "true".toJson)
                     }
             }
 
@@ -412,7 +414,8 @@ class AlarmsHealthFeedTests
                 "lifecycleEvent" -> "UPDATE".toJson,
                 "authKey" -> wskProps.authKey.toJson,
                 "trigger_payload" ->updatedPayload,
-                "date" -> updatedFutureDate.toJson
+                "date" -> updatedFutureDate.toJson,
+                "deleteAfterFire" -> "rules".toJson
             ))
 
             withActivation(wsk.activation, updateRunAction) {
@@ -434,6 +437,7 @@ class AlarmsHealthFeedTests
 
                             config should contain("date" -> updatedFutureDate.toJson)
                             config should contain("payload" -> updatedPayload)
+                            config should contain("deleteAfterFire" -> "rules".toJson)
                     }
             }
     }
