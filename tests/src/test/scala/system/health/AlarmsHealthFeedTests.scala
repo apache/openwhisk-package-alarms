@@ -63,7 +63,7 @@ class AlarmsHealthFeedTests
                 (action, name) => action.create(name, defaultAction)
             }
 
-            val futureDate = System.currentTimeMillis + (1000 * 20)
+            val futureDate = System.currentTimeMillis + (1000 * 30)
 
             // create trigger feed
             println(s"Creating trigger: $triggerName")
@@ -87,7 +87,7 @@ class AlarmsHealthFeedTests
 
             // get activation list again, should be same as before waiting
             println("confirming no new triggers")
-            val afterWait = wsk.activation.pollFor(N = activations + 1, Some(triggerName)).length
+            val afterWait = wsk.activation.pollFor(N = activations + 1, Some(triggerName), retries = 30).length
             println(s"Found activation size after wait: $afterWait")
             println("Activation list after wait should equal with activation list after firing once")
             afterWait should be(activations)
@@ -120,8 +120,8 @@ class AlarmsHealthFeedTests
                 (action, name) => action.create(name, defaultAction)
             }
 
-            val startDate = System.currentTimeMillis + (1000 * 20)
-            val stopDate = startDate + (1000 * 60)
+            val startDate = System.currentTimeMillis + (1000 * 30)
+            val stopDate = startDate + (1000 * 100)
 
             // create trigger feed
             println(s"Creating trigger: $triggerName")
@@ -142,14 +142,6 @@ class AlarmsHealthFeedTests
             val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = maxRetries).length
             println(s"Found activation size (should be 1): $activations")
             activations should be(1)
-
-
-            // get activation list again, should be same as before waiting
-            println("confirming no new triggers")
-            val activationsAfterWait = wsk.activation.pollFor(N = activations + 1, Some(triggerName)).length
-            println(s"Found activation size after wait: $activationsAfterWait")
-            println("Activation list after wait should equal with activation list after stopDate")
-            activationsAfterWait should be(activations)
     }
 
     it should "fire interval trigger using startDate and stopDate" in withAssetCleaner(wskprops) {
@@ -175,8 +167,8 @@ class AlarmsHealthFeedTests
                 (action, name) => action.create(name, defaultAction)
             }
 
-            val startDate = System.currentTimeMillis + (1000 * 20)
-            val stopDate = startDate + (1000 * 90)
+            val startDate = System.currentTimeMillis + (1000 * 30)
+            val stopDate = startDate + (1000 * 100)
 
             // create trigger feed
             println(s"Creating trigger: $triggerName")
@@ -204,67 +196,6 @@ class AlarmsHealthFeedTests
             activationsAfterInterval should be(2)
     }
 
-    it should "return correct status and configuration" in withAssetCleaner(wskprops) {
-        val currentTime = s"${System.currentTimeMillis}"
-
-        (wp, assetHelper) =>
-            implicit val wskProps = wp
-            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyAlarmsPackage"
-
-            // the package alarms should be there
-            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
-            println("fetched package alarms")
-            packageGetResult.stdout should include("ok")
-
-            // create package binding
-            assetHelper.withCleaner(wsk.pkg, packageName) {
-                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
-            }
-
-            val triggerPayload = JsObject(
-                "test" -> JsString("alarmsTest")
-            )
-            val cronString = "* * * * *"
-
-            // create trigger feed
-            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
-                (trigger, name) =>
-                    trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
-                        "trigger_payload" -> triggerPayload,
-                        "cron" -> cronString.toJson))
-            }
-            feedCreationResult.stdout should include("ok")
-
-            val actionName = s"$packageName/alarm"
-            val run = wsk.action.invoke(actionName, parameters = Map(
-                "triggerName" -> triggerName.toJson,
-                "lifecycleEvent" -> "READ".toJson,
-                "authKey" -> wskProps.authKey.toJson
-            ))
-
-            withActivation(wsk.activation, run) {
-                activation => activation.response.success shouldBe true
-
-                    inside (activation.response.result) {
-                        case Some(result) =>
-                            val config = result.getFields("config").head.asInstanceOf[JsObject].fields
-                            val status = result.getFields("status").head.asInstanceOf[JsObject].fields
-
-                            config should contain("name" -> triggerName.toJson)
-                            config should contain("cron" -> cronString.toJson)
-                            config should contain("payload" -> triggerPayload)
-                            config should contain key "namespace"
-
-                            status should contain("active" -> true.toJson)
-                            status should contain key "dateChanged"
-                            status should contain key "dateChangedISO"
-                            status should not(contain key "reason")
-                    }
-            }
-
-    }
-
     it should "update cron, startDate and stopDate parameters" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskProps = wp
@@ -282,8 +213,8 @@ class AlarmsHealthFeedTests
             }
 
             val cron = "* * * * *"
-            val startDate = System.currentTimeMillis + (1000 * 20)
-            val stopDate = startDate + (1000 * 10)
+            val startDate = System.currentTimeMillis + (1000 * 30)
+            val stopDate = startDate + (1000 * 100)
 
             // create trigger feed
             println(s"Creating trigger: $triggerName")
@@ -309,16 +240,22 @@ class AlarmsHealthFeedTests
                     inside(activation.response.result) {
                         case Some(result) =>
                             val config = result.getFields("config").head.asInstanceOf[JsObject].fields
+                            val status = result.getFields("status").head.asInstanceOf[JsObject].fields
 
                             config should contain("cron" -> cron.toJson)
                             config should contain("startDate" -> startDate.toJson)
                             config should contain("stopDate" -> stopDate.toJson)
+
+                            status should contain("active" -> true.toJson)
+                            status should contain key "dateChanged"
+                            status should contain key "dateChangedISO"
+                            status should not(contain key "reason")
                     }
             }
 
             val updatedCron = "*/2 * * * *"
-            val updatedStartDate = System.currentTimeMillis + (1000 * 20)
-            val updatedStopDate = updatedStartDate + (1000 * 10)
+            val updatedStartDate = System.currentTimeMillis + (1000 * 30)
+            val updatedStopDate = updatedStartDate + (1000 * 100)
 
             val updateRunAction = wsk.action.invoke(actionName, parameters = Map(
                 "triggerName" -> triggerName.toJson,
@@ -369,7 +306,7 @@ class AlarmsHealthFeedTests
                 (pkg, name) => pkg.bind("/whisk.system/alarms", name)
             }
 
-            val futureDate = System.currentTimeMillis + (1000 * 20)
+            val futureDate = System.currentTimeMillis + (1000 * 30)
             val payload = JsObject(
                 "test" -> JsString("alarmsTest")
             )
@@ -404,7 +341,7 @@ class AlarmsHealthFeedTests
                     }
             }
 
-            val updatedFutureDate = System.currentTimeMillis + (1000 * 20)
+            val updatedFutureDate = System.currentTimeMillis + (1000 * 30)
             val updatedPayload = JsObject(
                 "update_test" -> JsString("alarmsTest")
             )
@@ -459,8 +396,8 @@ class AlarmsHealthFeedTests
             }
 
             val minutes = 1
-            val startDate = System.currentTimeMillis + (1000 * 20)
-            val stopDate = startDate + (1000 * 90)
+            val startDate = System.currentTimeMillis + (1000 * 30)
+            val stopDate = startDate + (1000 * 100)
 
             // create trigger feed
             println(s"Creating trigger: $triggerName")
@@ -494,8 +431,8 @@ class AlarmsHealthFeedTests
             }
 
             val updatedMinutes = 2
-            val updatedStartDate = System.currentTimeMillis + (1000 * 20)
-            val updatedStopDate = updatedStartDate + (1000 * 10)
+            val updatedStartDate = System.currentTimeMillis + (1000 * 30)
+            val updatedStopDate = updatedStartDate + (1000 * 100)
 
             val updateRunAction = wsk.action.invoke(actionName, parameters = Map(
                 "triggerName" -> triggerName.toJson,
