@@ -3,13 +3,15 @@ module.exports = function(logger, utils) {
   // Active Endpoint
   this.endPoint = '/active';
 
+  var hostMachine = process.env.HOST_MACHINE;
+
   this.active = function(req, res) {
       var method = 'active';
 
       var response = {
           worker: utils.worker,
           host: utils.host,
-          hostMachine: utils.hostMachine,
+          hostMachine: hostMachine,
           active: utils.host === utils.activeHost
       };
 
