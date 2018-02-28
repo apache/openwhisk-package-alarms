@@ -9,19 +9,19 @@ var Sanitizer = require('./sanitizer');
 
 module.exports = function(logger, triggerDB, redisClient) {
 
-    this.module = 'utils';
     this.triggers = {};
     this.endpointAuth = process.env.ENDPOINT_AUTH;
     this.routerHost = process.env.ROUTER_HOST || 'localhost';
     this.worker = process.env.WORKER || 'worker0';
     this.host = process.env.HOST_INDEX || 'host0';
-    this.hostMachine = process.env.HOST_MACHINE;
     this.activeHost = 'host0'; //default value on init (will be updated for existing redis)
+    this.db = triggerDB;
     this.redisClient = redisClient;
     this.redisHash = triggerDB.config.db + '_' + this.worker;
     this.redisKey = constants.REDIS_KEY;
     this.uriHost ='https://' + this.routerHost + ':443';
     this.sanitizer = new Sanitizer(logger, triggerDB, this.uriHost);
+    this.monitorStatus = {};
 
     var retryDelay = constants.RETRY_DELAY;
     var retryAttempts = constants.RETRY_ATTEMPTS;
@@ -34,14 +34,12 @@ module.exports = function(logger, triggerDB, redisClient) {
         var method = 'createTrigger';
 
         var callback = function onTick() {
-            if (utils.activeHost === utils.host) {
-                var triggerHandle = utils.triggers[triggerIdentifier];
-                if (triggerHandle && (!triggerHandle.maxTriggers || triggerHandle.maxTriggers === -1 || triggerHandle.triggersLeft > 0)) {
-                    try {
-                        utils.fireTrigger(triggerHandle);
-                    } catch (e) {
-                        logger.error(method, 'Exception occurred while firing trigger', triggerIdentifier, e);
-                    }
+            var triggerHandle = utils.triggers[triggerIdentifier];
+            if (triggerHandle && utils.shouldFireTrigger(triggerHandle) && utils.hasTriggersRemaining(triggerHandle)) {
+                try {
+                    utils.fireTrigger(triggerHandle);
+                } catch (e) {
+                    logger.error(method, 'Exception occurred while firing trigger', triggerIdentifier, e);
                 }
             }
         };
@@ -73,11 +71,11 @@ module.exports = function(logger, triggerDB, redisClient) {
         utils.postTrigger(dataTrigger, auth, 0)
         .then(triggerId => {
             logger.info(method, 'Trigger', triggerId, 'was successfully fired');
-            utils.handleExpiredTriggers(dataTrigger);
+            utils.handleFiredTrigger(dataTrigger, dataTrigger.monitor !== undefined);
         })
         .catch(err => {
             logger.error(method, err);
-            utils.handleExpiredTriggers(dataTrigger);
+            utils.handleFiredTrigger(dataTrigger);
         });
     };
 
@@ -149,8 +147,26 @@ module.exports = function(logger, triggerDB, redisClient) {
             [HttpStatus.REQUEST_TIMEOUT, HttpStatus.TOO_MANY_REQUESTS].indexOf(statusCode) === -1);
     };
 
-    this.handleExpiredTriggers = function(dataTrigger) {
-        var method = 'handleExpiredTriggers';
+    this.shouldFireTrigger = function(trigger) {
+        if (!trigger.monitor && utils.activeHost === utils.host) {
+           return true;
+        }
+        else if (trigger.monitor === utils.host) {
+            return true;
+        }
+        return false;
+    };
+
+    this.hasTriggersRemaining = function(trigger) {
+        return !trigger.maxTriggers || trigger.maxTriggers === -1 || trigger.triggersLeft > 0;
+    };
+
+    this.handleFiredTrigger = function(dataTrigger, isMonitorTrigger) {
+        var method = 'handleFiredTrigger';
+
+        if (isMonitorTrigger) {
+            utils.monitorStatus.triggerFired = true;
+        }
 
         var triggerIdentifier = dataTrigger.triggerID;
         if (dataTrigger.date) {
@@ -195,7 +211,6 @@ module.exports = function(logger, triggerDB, redisClient) {
             utils.disableTrigger(triggerIdentifier, undefined, 'Automatically disabled after reaching max triggers');
             logger.warn(method, 'no more triggers left, disabled', triggerIdentifier);
         }
-
     };
 
     this.disableTrigger = function(triggerIdentifier, statusCode, message) {
@@ -286,7 +301,7 @@ module.exports = function(logger, triggerDB, redisClient) {
                                 .then(cachedTrigger => {
                                     utils.triggers[triggerIdentifier] = cachedTrigger;
                                     logger.info(method, triggerIdentifier, 'created successfully');
-                                    if (cachedTrigger.intervalHandle && utils.activeHost === utils.host) {
+                                    if (cachedTrigger.intervalHandle && utils.shouldFireTrigger(cachedTrigger)) {
                                         try {
                                             utils.fireTrigger(cachedTrigger);
                                         } catch (e) {
@@ -328,6 +343,9 @@ module.exports = function(logger, triggerDB, redisClient) {
 
                 if (utils.triggers[triggerIdentifier]) {
                     if (doc.status && doc.status.active === false) {
+                        if (doc.monitor && doc.monitor === utils.host) {
+                            utils.monitorStatus.triggerUpdated = true;
+                        }
                         utils.stopTrigger(triggerIdentifier);
                     }
                 }
@@ -338,7 +356,12 @@ module.exports = function(logger, triggerDB, redisClient) {
                         .then(cachedTrigger => {
                             utils.triggers[triggerIdentifier] = cachedTrigger;
                             logger.info(method, triggerIdentifier, 'created successfully');
-                            if (cachedTrigger.intervalHandle && utils.activeHost === utils.host) {
+
+                            if (doc.monitor && doc.monitor === utils.host) {
+                                utils.monitorStatus.triggerStarted = true;
+                            }
+
+                            if (cachedTrigger.intervalHandle && utils.shouldFireTrigger(cachedTrigger)) {
                                 try {
                                     utils.fireTrigger(cachedTrigger);
                                 } catch (e) {
@@ -370,7 +393,6 @@ module.exports = function(logger, triggerDB, redisClient) {
         var method = 'authorize';
 
         if (utils.endpointAuth) {
-
             if (!req.headers.authorization) {
                 res.set('www-authenticate', 'Basic realm="Private"');
                 res.status(HttpStatus.UNAUTHORIZED);
@@ -390,9 +412,7 @@ module.exports = function(logger, triggerDB, redisClient) {
 
             var uuid = auth[1];
             var key = auth[2];
-
             var endpointAuth = utils.endpointAuth.split(':');
-
             if (endpointAuth[0] === uuid && endpointAuth[1] === key) {
                 next();
             }

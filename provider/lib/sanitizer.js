@@ -21,6 +21,9 @@ module.exports = function(logger, triggerDB, uriHost) {
                             logger.error(method, triggerID, 'there was an error deleting the trigger from the database');
                         }
                     }
+                    else {
+                        logger.info(method, triggerID, 'trigger was successfully deleted from the database');
+                    }
                 });
             }
             else {

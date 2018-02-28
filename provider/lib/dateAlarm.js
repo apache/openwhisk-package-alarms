@@ -10,7 +10,8 @@ module.exports = function(logger, newTrigger) {
         date: newTrigger.date,
         deleteAfterFire: newTrigger.deleteAfterFire,
         triggerID: newTrigger.triggerID,
-        uri: newTrigger.uri
+        uri: newTrigger.uri,
+        monitor: newTrigger.monitor
     };
 
     this.scheduleAlarm = function(triggerIdentifier, callback) {
