@@ -83,11 +83,10 @@ class AlarmsFeedTests
     }
 
     it should "return error message when alarm action does not include cron parameter" in withAssetCleaner(wskprops) {
-
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
             val feed = "alarm"
 
             // the package alarms should be there
@@ -112,11 +111,10 @@ class AlarmsFeedTests
     }
 
     it should "return error message when alarms once action does not include date parameter" in withAssetCleaner(wskprops) {
-
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
             val feed = "once"
 
             // the package alarms should be there
@@ -141,11 +139,10 @@ class AlarmsFeedTests
     }
 
     it should "return error message when alarm action includes invalid cron parameter" in withAssetCleaner(wskprops) {
-
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
             val feed = "alarm"
 
             // the package alarms should be there
@@ -173,11 +170,10 @@ class AlarmsFeedTests
     }
 
     it should "return error message when alarms once action includes an invalid date parameter" in withAssetCleaner(wskprops) {
-
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
             val feed = "once"
 
             // the package alarms should be there
@@ -203,11 +199,10 @@ class AlarmsFeedTests
     }
 
     it should "return error message when alarms once action date parameter is not a future date" in withAssetCleaner(wskprops) {
-
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
             val feed = "once"
 
             // the package alarms should be there
@@ -235,11 +230,10 @@ class AlarmsFeedTests
     }
 
     it should "return error message when alarms startDate parameter is not a future date" in withAssetCleaner(wskprops) {
-
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
             val feed = "alarm"
 
             // the package alarms should be there
@@ -267,11 +261,10 @@ class AlarmsFeedTests
     }
 
     it should "return error message when alarms stopDate parameter is not greater than startDate" in withAssetCleaner(wskprops) {
-
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
             val feed = "alarm"
 
             // the package alarms should be there
@@ -284,7 +277,7 @@ class AlarmsFeedTests
                 (pkg, name) => pkg.bind("/whisk.system/alarms", name)
             }
 
-            val stopDate = System.currentTimeMillis + 5000
+            val stopDate = System.currentTimeMillis + 30000
             val startDate = stopDate
 
             // create trigger with feed
@@ -301,11 +294,10 @@ class AlarmsFeedTests
     }
 
     it should "return error message when interval action does not include minutes parameter" in withAssetCleaner(wskprops) {
-
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
             val feed = "interval"
 
             // the package alarms should be there
@@ -330,11 +322,10 @@ class AlarmsFeedTests
     }
 
     it should "return error message when interval action includes invalid minutes parameter" in withAssetCleaner(wskprops) {
-
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
             val feed = "interval"
 
             // the package alarms should be there
@@ -456,8 +447,8 @@ class AlarmsFeedTests
     it should "return error message when limitCronFields is true and 6 cron fields are used" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
             val feed = "alarm"
 
             // the package alarms should be there
