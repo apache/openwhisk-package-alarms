@@ -165,7 +165,7 @@ module.exports = function(logger, triggerDB, redisClient) {
         var method = 'handleFiredTrigger';
 
         if (isMonitorTrigger) {
-            utils.monitorStatus.triggerFired = true;
+            utils.monitorStatus.triggerFired = "success";
         }
 
         var triggerIdentifier = dataTrigger.triggerID;
@@ -343,10 +343,10 @@ module.exports = function(logger, triggerDB, redisClient) {
 
                 if (utils.triggers[triggerIdentifier]) {
                     if (doc.status && doc.status.active === false) {
-                        if (doc.monitor && doc.monitor === utils.host) {
-                            utils.monitorStatus.triggerUpdated = true;
-                        }
                         utils.stopTrigger(triggerIdentifier);
+                        if (doc.monitor && doc.monitor === utils.host) {
+                            utils.monitorStatus.triggerStopped = "success";
+                        }
                     }
                 }
                 else {
@@ -358,7 +358,7 @@ module.exports = function(logger, triggerDB, redisClient) {
                             logger.info(method, triggerIdentifier, 'created successfully');
 
                             if (doc.monitor && doc.monitor === utils.host) {
-                                utils.monitorStatus.triggerStarted = true;
+                                utils.monitorStatus.triggerStarted = "success";
                             }
 
                             if (cachedTrigger.intervalHandle && utils.shouldFireTrigger(cachedTrigger)) {

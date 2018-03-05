@@ -11,6 +11,8 @@ module.exports = function(logger, utils) {
     var triggerName;
     var monitorStatus;
     var alarmTypes = ['interval', 'date', 'cron'];
+    var alarmTypeIndex = 0;
+    var monitorStages = ['triggerStarted', 'triggerFired', 'triggerStopped'];
     var healthMonitor = this;
 
     // Health Logic
@@ -49,6 +51,14 @@ module.exports = function(logger, utils) {
 
         if (triggerName) {
             monitorStatus = Object.assign({}, utils.monitorStatus);
+            utils.monitorStatus = {};
+
+            var monitorStatusSize = Object.keys(monitorStatus).length;
+            if (monitorStatusSize < 5) {
+                //we have a failure in one of the stages
+                var stageFailed = monitorStages[monitorStatusSize - 2];
+                monitorStatus[stageFailed] = 'failed';
+            }
             var existingID = `${apikey}/_/${triggerName}`;
 
             //delete trigger feed from database
@@ -60,45 +70,40 @@ module.exports = function(logger, utils) {
                 triggerID: existingID
             };
             utils.sanitizer.deleteTrigger(dataTrigger, auth, 0)
-                .then((info) => {
-                    logger.info(method, existingID, info);
-                })
-                .catch(err => {
-                    logger.error(method, existingID, err);
-                });
+            .then((info) => {
+                logger.info(method, existingID, info);
+            })
+            .catch(err => {
+                logger.error(method, existingID, err);
+            });
+
+            var existingAlarmIndex = alarmTypes.indexOf(monitorStatus.triggerType);
+            alarmTypeIndex = existingAlarmIndex !== 2 ? existingAlarmIndex + 1 : 0;
         }
 
         //create new alarm trigger
         triggerName = 'alarms_' + utils.worker + utils.host + '_' + Date.now();
-
-        var triggerURL = utils.uriHost + '/api/v1/namespaces/_/triggers/' + triggerName;
-        var triggerID = `${apikey}/_/${triggerName}`;
-        healthMonitor.createTrigger(triggerURL, auth)
-            .then((info) => {
-                logger.info(method, triggerID, info);
-                var newTrigger = healthMonitor.createAlarmTrigger(triggerID, triggerName, apikey);
-                healthMonitor.createTriggerInDB(triggerID, newTrigger);
-            })
-            .catch(err => {
-                logger.error(method, triggerID, err);
-            });
-    };
-
-    this.createAlarmTrigger = function(triggerID, triggerName, apikey) {
-        var method = 'createAlarmTrigger';
-
-        var existingTypeIndex = -1;
-        if (monitorStatus && alarmTypes.indexOf(monitorStatus.triggerType) !== 2) {
-            existingTypeIndex = alarmTypes.indexOf(monitorStatus.triggerType);
-        }
-        var alarmType = alarmTypes[existingTypeIndex + 1];
+        var alarmType = alarmTypes[alarmTypeIndex];
 
         //update status monitor object
         utils.monitorStatus.triggerName = triggerName;
         utils.monitorStatus.triggerType = alarmType;
-        utils.monitorStatus.triggerStarted = false;
-        utils.monitorStatus.triggerFired = false;
-        utils.monitorStatus.triggerUpdated = false;
+
+        var triggerURL = utils.uriHost + '/api/v1/namespaces/_/triggers/' + triggerName;
+        var triggerID = `${apikey}/_/${triggerName}`;
+        healthMonitor.createTrigger(triggerURL, auth)
+        .then((info) => {
+            logger.info(method, triggerID, info);
+            var newTrigger = healthMonitor.createAlarmTrigger(triggerID, apikey, alarmType);
+            healthMonitor.createTriggerInDB(triggerID, newTrigger);
+        })
+        .catch(err => {
+            logger.error(method, triggerID, err);
+        });
+    };
+
+    this.createAlarmTrigger = function(triggerID, apikey, alarmType) {
+        var method = 'createAlarmTrigger';
 
         var newTrigger = {
             apikey: apikey,
