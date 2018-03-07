@@ -79,7 +79,7 @@ module.exports = function(logger, triggerDB, redisClient) {
         });
     };
 
-    this.postTrigger = function(dataTrigger, auth, retryCount) {
+    this.postTrigger = function(dataTrigger, auth, retryCount, throttleCount) {
         var method = 'postTrigger';
 
         return new Promise(function(resolve, reject) {
@@ -103,11 +103,14 @@ module.exports = function(logger, triggerDB, redisClient) {
                     logger.info(method, triggerIdentifier, 'http post request, STATUS:', response ? response.statusCode : undefined);
 
                     if (error || response.statusCode >= 400) {
+                        logger.error(method, 'there was an error invoking', triggerIdentifier, response ? response.statusCode : error);
+                        var throttleCounter = throttleCount || 0;
+
                         // only manage trigger fires if they are not infinite
                         if (dataTrigger.maxTriggers && dataTrigger.maxTriggers !== -1) {
                             dataTrigger.triggersLeft++;
                         }
-                        logger.error(method, 'there was an error invoking', triggerIdentifier, response ? response.statusCode : error);
+
                         if (!error && utils.shouldDisableTrigger(response.statusCode)) {
                             //disable trigger
                             var message = 'Automatically disabled after receiving a ' + response.statusCode + ' status code when firing the trigger';
@@ -116,18 +119,26 @@ module.exports = function(logger, triggerDB, redisClient) {
                         }
                         else {
                             if (retryCount < retryAttempts) {
+                                throttleCounter = response && response.statusCode === HttpStatus.TOO_MANY_REQUESTS ? throttleCounter + 1 : throttleCounter;
                                 logger.info(method, 'attempting to fire trigger again', triggerIdentifier, 'Retry Count:', (retryCount + 1));
                                 setTimeout(function () {
-                                    utils.postTrigger(dataTrigger, auth, (retryCount + 1))
+                                    utils.postTrigger(dataTrigger, auth, (retryCount + 1), throttleCounter)
                                     .then(triggerId => {
                                         resolve(triggerId);
                                     })
                                     .catch(err => {
                                         reject(err);
                                     });
-                                }, retryDelay);
+                                }, Math.max(retryDelay, 1000 * Math.pow(throttleCounter, 2)));
                             } else {
-                                reject('Unable to reach server to fire trigger ' + triggerIdentifier);
+                                if (throttleCounter === retryAttempts) {
+                                    var msg = 'Automatically disabled after continuously receiving a 429 status code when firing the trigger';
+                                    utils.disableTrigger(triggerIdentifier, 429, msg);
+                                    reject('Disabled trigger ' + triggerIdentifier + ' due to status code: 429');
+                                }
+                                else {
+                                    reject('Unable to reach server to fire trigger ' + triggerIdentifier);
+                                }
                             }
                         }
                     } else {
