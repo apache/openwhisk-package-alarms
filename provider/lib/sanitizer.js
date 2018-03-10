@@ -143,4 +143,43 @@ module.exports = function(logger, triggerDB, uriHost) {
         });
     };
 
+    this.deleteTriggerFeed = function(triggerID) {
+        var method = 'deleteTriggerFeed';
+
+        return new Promise(function(resolve, reject) {
+            triggerDB.get(triggerID, function (err, existing) {
+                if (!err) {
+                    if (!existing.status || existing.status.active === true) {
+                        var updatedTrigger = existing;
+                        var status = {
+                            'active': false,
+                            'dateChanged': Date.now(),
+                            'reason': {'kind': 'AUTO', 'statusCode': undefined, 'message': `Marked for deletion`}
+                        };
+                        updatedTrigger.status = status;
+
+                        triggerDB.insert(updatedTrigger, triggerID, function (err) {
+                            if (err) {
+                                reject(err);
+                            }
+                            else {
+                                resolve(triggerID);
+                            }
+                        });
+                    }
+                }
+                else {
+                    reject(err);
+                }
+            });
+        })
+        .then(triggerID => {
+            sanitizer.deleteTriggerFromDB(triggerID, 0);
+        })
+        .catch(err => {
+            logger.error(method, triggerID, 'an error occurred while deleting the trigger feed', err);
+        });
+
+    };
+
 };

@@ -182,10 +182,9 @@ module.exports = function(logger, triggerDB, redisClient) {
         var triggerIdentifier = dataTrigger.triggerID;
         if (dataTrigger.date) {
             if (dataTrigger.deleteAfterFire && dataTrigger.deleteAfterFire !== 'false') {
-                utils.stopTrigger(triggerIdentifier);
 
                 //delete trigger feed from database
-                utils.sanitizer.deleteTriggerFromDB(triggerIdentifier, 0);
+                utils.sanitizer.deleteTriggerFeed(triggerIdentifier);
 
                 //check if trigger and all associated rules should be deleted
                 if (dataTrigger.deleteAfterFire === 'rules') {
@@ -194,7 +193,7 @@ module.exports = function(logger, triggerDB, redisClient) {
                 else {
                     var auth = dataTrigger.apikey.split(':');
                     utils.sanitizer.deleteTrigger(dataTrigger, auth, 0)
-                    .then((info) => {
+                    .then(info => {
                         logger.info(method, triggerIdentifier, info);
                     })
                     .catch(err => {
