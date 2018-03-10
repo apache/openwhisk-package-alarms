@@ -149,24 +149,22 @@ module.exports = function(logger, triggerDB, uriHost) {
         return new Promise(function(resolve, reject) {
             triggerDB.get(triggerID, function (err, existing) {
                 if (!err) {
-                    if (!existing.status || existing.status.active === true) {
-                        var updatedTrigger = existing;
-                        var status = {
-                            'active': false,
-                            'dateChanged': Date.now(),
-                            'reason': {'kind': 'AUTO', 'statusCode': undefined, 'message': `Marked for deletion`}
-                        };
-                        updatedTrigger.status = status;
+                    var updatedTrigger = existing;
+                    var status = {
+                        'active': false,
+                        'dateChanged': Date.now(),
+                        'reason': {'kind': 'AUTO', 'statusCode': undefined, 'message': `Marked for deletion`}
+                    };
+                    updatedTrigger.status = status;
 
-                        triggerDB.insert(updatedTrigger, triggerID, function (err) {
-                            if (err) {
-                                reject(err);
-                            }
-                            else {
-                                resolve(triggerID);
-                            }
-                        });
-                    }
+                    triggerDB.insert(updatedTrigger, triggerID, function (err) {
+                        if (err) {
+                            reject(err);
+                        }
+                        else {
+                            resolve(triggerID);
+                        }
+                    });
                 }
                 else {
                     reject(err);
