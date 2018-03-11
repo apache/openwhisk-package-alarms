@@ -27,8 +27,12 @@ import org.scalatest.{FlatSpec, Matchers}
 import spray.json.DefaultJsonProtocol.StringJsonFormat
 import spray.json.DefaultJsonProtocol._
 import spray.json.{pimpAny, _}
-import whisk.core.database.test.DatabaseScriptTestUtils
-import whisk.utils.JsHelpers
+import whisk.core.WhiskConfig
+import whisk.core.database.test.ExtendedCouchDbRestClient
+import whisk.utils.{JsHelpers, retry}
+
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
 
 
 @RunWith(classOf[JUnitRunner])
@@ -36,14 +40,20 @@ class AlarmsMultiWorkersTests extends FlatSpec
     with Matchers
     with WskActorSystem
     with WskTestHelpers
-    with StreamLogging
-    with DatabaseScriptTestUtils {
+    with StreamLogging {
 
     val wskprops = WskProps()
     val wsk = new Wsk
     val auth = WhiskProperties.getBasicAuth
     val user = auth.fst
     val password = auth.snd
+
+    val dbProtocol = WhiskProperties.getProperty("db.protocol")
+    val dbHost = WhiskProperties.getProperty("db.host")
+    val dbPort = WhiskProperties.getProperty("db.port").toInt
+    val dbUsername = WhiskProperties.getProperty("db.username")
+    val dbPassword = WhiskProperties.getProperty("db.password")
+    val dbPrefix = WhiskProperties.getProperty(WhiskConfig.dbPrefix)
 
     val webAction = "/whisk.system/alarmsWeb/alarmWebAction"
     val webActionURL = s"https://${wskprops.apihost}/api/v1/web${webAction}.http"
@@ -81,14 +91,19 @@ class AlarmsMultiWorkersTests extends FlatSpec
                 makePostCallWithExpectedResult(worker11Params, 200)
 
                 val dbName = s"${dbPrefix}alarmservice"
-                val documents = getAllDocs(dbName)
+                val client = new ExtendedCouchDbRestClient(dbProtocol, dbHost, dbPort, dbUsername, dbPassword, dbName)
 
-                val worker1Doc = documents
-                        .fields("rows")
-                        .convertTo[List[JsObject]]
-                        .filter(_.fields("id").convertTo[String].equals(s"$user:$password/_/$worker11Trigger"))
+                retry({
+                    val result = Await.result(client.getAllDocs(includeDocs = Some(true)), 15.seconds)
+                    result should be('right)
+                    val documents = result.right.get
+                    val worker1Doc = documents
+                            .fields("rows")
+                            .convertTo[List[JsObject]]
+                            .filter(_.fields("id").convertTo[String].equals(s"$user:$password/_/$worker11Trigger"))
 
-                JsHelpers.getFieldPath(worker1Doc(0), "doc", "worker") shouldBe Some(JsString("worker11"))
+                    JsHelpers.getFieldPath(worker1Doc.head, "doc", "worker") shouldBe Some(JsString("worker11"))
+                })
             } finally {
                 //delete trigger feeds and triggers
                 makeDeleteCallWithExpectedResult(worker10Params, DONTCARE_EXIT)
@@ -116,6 +131,5 @@ class AlarmsMultiWorkersTests extends FlatSpec
                 .delete(webActionURL)
         assert(expectedCode == DONTCARE_EXIT || response.statusCode() == expectedCode)
     }
-
 
 }
