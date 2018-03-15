@@ -71,7 +71,7 @@ module.exports = function(logger, triggerDB, redisClient) {
         utils.postTrigger(dataTrigger, auth, 0)
         .then(triggerId => {
             logger.info(method, 'Trigger', triggerId, 'was successfully fired');
-            utils.handleFiredTrigger(dataTrigger, dataTrigger.monitor !== undefined);
+            utils.handleFiredTrigger(dataTrigger);
         })
         .catch(err => {
             logger.error(method, err);
@@ -159,23 +159,21 @@ module.exports = function(logger, triggerDB, redisClient) {
     };
 
     this.shouldFireTrigger = function(trigger) {
-        if (!trigger.monitor && utils.activeHost === utils.host) {
-           return true;
-        }
-        else if (trigger.monitor === utils.host) {
-            return true;
-        }
-        return false;
+        return trigger.monitor || utils.activeHost === utils.host;
     };
 
     this.hasTriggersRemaining = function(trigger) {
         return !trigger.maxTriggers || trigger.maxTriggers === -1 || trigger.triggersLeft > 0;
     };
 
-    this.handleFiredTrigger = function(dataTrigger, isMonitorTrigger) {
+    this.isMonitoringTrigger = function(monitor, triggerName) {
+        return monitor && utils.monitorStatus.triggerName === triggerName;
+    };
+
+    this.handleFiredTrigger = function(dataTrigger) {
         var method = 'handleFiredTrigger';
 
-        if (isMonitorTrigger && utils.monitorStatus.triggerName === dataTrigger.name) {
+        if (utils.isMonitoringTrigger(dataTrigger.monitor, dataTrigger.name)) {
             utils.monitorStatus.triggerFired = "success";
         }
 
@@ -283,7 +281,7 @@ module.exports = function(logger, triggerDB, redisClient) {
                     var triggerIdentifier = trigger.id;
                     var doc = trigger.doc;
 
-                    if (!(triggerIdentifier in utils.triggers)) {
+                    if (!(triggerIdentifier in utils.triggers) && !doc.monitor) {
                         //check if trigger still exists in whisk db
                         var namespace = doc.namespace;
                         var name = doc.name;
@@ -354,20 +352,20 @@ module.exports = function(logger, triggerDB, redisClient) {
                 if (utils.triggers[triggerIdentifier]) {
                     if (doc.status && doc.status.active === false) {
                         utils.stopTrigger(triggerIdentifier);
-                        if (doc.monitor && doc.monitor === utils.host && utils.monitorStatus.triggerName === doc.name) {
+                        if (utils.isMonitoringTrigger(doc.monitor, doc.name)) {
                             utils.monitorStatus.triggerStopped = "success";
                         }
                     }
                 }
                 else {
                     //ignore changes to disabled triggers
-                    if (!doc.status || doc.status.active === true) {
+                    if ((!doc.status || doc.status.active === true) && (!doc.monitor || doc.monitor === utils.host)) {
                         utils.createTrigger(triggerIdentifier, doc)
                         .then(cachedTrigger => {
                             utils.triggers[triggerIdentifier] = cachedTrigger;
                             logger.info(method, triggerIdentifier, 'created successfully');
 
-                            if (doc.monitor && doc.monitor === utils.host && utils.monitorStatus.triggerName === cachedTrigger.name) {
+                            if (utils.isMonitoringTrigger(cachedTrigger.monitor, cachedTrigger.name)) {
                                 utils.monitorStatus.triggerStarted = "success";
                             }
 
