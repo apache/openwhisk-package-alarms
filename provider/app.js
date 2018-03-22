@@ -16,6 +16,8 @@ var ProviderRAS = require('./lib/ras.js');
 var ProviderActivation = require('./lib/active.js');
 var constants = require('./lib/constants.js');
 
+var Discover = require('node-discover');
+
 // Initialize the Express Application
 var app = express();
 app.use(bodyParser.json());
@@ -39,11 +41,75 @@ var monitoringInterval = process.env.MONITORING_INTERVAL;
 var filterDDName = '_design/' + constants.FILTERS_DESIGN_DOC;
 var viewDDName = '_design/' + constants.VIEWS_DESIGN_DOC;
 
+// If the environment variables below does not exist, the discover socket is not created.
+var discoverDestinations = process.env.DISCOVER_DESTINATIONS;
+var discoverAddress = process.env.DISCOVER_ADDRESS || '0.0.0.0';
+var discoverPort = process.env.DISCOVER_PORT || '51007';
+// The following conditions must be met :
+//   masterTimeout >= nodeTimeout >= checkInterval > helloInterval
+var helloInterval = process.env.DISCOVER_HELLO_INTERVAL || 1000;
+var checkInterval = process.env.DISCOVER_CHECK_INTERVAL || 2000;
+var nodeTimeout =  process.env.DISCOVER_NODE_TIMEOUT || 2000;
+var masterTimeout = process.env.DISCOVER_MASTER_TIMEOUT || 2000;
+
 // Create the Provider Server
 var server = http.createServer(app);
 server.listen(app.get('port'), function() {
     logger.info('server.listen', 'Express server listening on port ' + app.get('port'));
 });
+
+
+function createDiscover(destinations) {
+    var method = 'createDiscover';
+
+    return new Promise(function (resolve, reject) {
+        if (destinations) {
+            var opt = {
+                address: discoverAddress,
+                port: discoverPort,
+                unicast: destinations,
+                helloInterval: helloInterval,
+                checkInterval: checkInterval,
+                nodeTimeout: nodeTimeout,
+                masterTimeout: masterTimeout
+            };
+
+            var discover = Discover(opt, function (err, success) {
+                if (success) {
+                    logger.info(method, 'The discover socket is created!');
+                } else {
+                    logger.error(method, 'Failed to create discover socket', err);
+                    reject(err);
+                }
+            });
+
+            if (discover) {
+                // These are subscribe methods for logging.
+                discover.on('promotion', function () {
+                    logger.info(method, 'I was promoted to a master.', discover.me);
+                });
+
+                discover.on('added', function (obj) {
+                    logger.info(method, 'A new node has been added.', obj);
+                });
+
+                discover.on('removed', function (obj) {
+                    logger.info(method, 'A node has been removed.', obj);
+                });
+
+                discover.on('master', function (obj) {
+                    logger.info(method, 'A new master is in control', obj);
+                });
+
+                resolve(discover);
+            } else {
+                reject('Failed to create discover socket');
+            }
+        } else {
+            resolve();
+        }
+    });
+}
 
 function createDatabase() {
     var method = 'createDatabase';
@@ -166,6 +232,7 @@ function createRedisClient() {
 function init(server) {
     var method = 'init';
     var nanoDb;
+    var discoverNode;
     var providerUtils;
 
     if (server !== null) {
@@ -179,10 +246,14 @@ function init(server) {
     createDatabase()
     .then(db => {
         nanoDb = db;
+        return createDiscover(discoverDestinations);
+    })
+    .then(discover => {
+        discoverNode = discover;
         return createRedisClient();
     })
     .then(client => {
-        providerUtils = new ProviderUtils(logger, nanoDb, client);
+        providerUtils = new ProviderUtils(logger, nanoDb, client, discoverNode);
         return providerUtils.initRedis();
     })
     .then(() => {
