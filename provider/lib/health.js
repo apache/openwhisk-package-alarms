@@ -115,18 +115,19 @@ module.exports = function(logger, utils) {
             monitor: utils.host
         };
 
-        var currentDate = Date.now();
+        var minuteInterval = 1000 * 60;
+        var startDate = Date.now() + minuteInterval;
         if (alarmType === 'interval') {
             newTrigger.minutes = 1;
-            newTrigger.startDate = currentDate + (1000 * 60);
-            newTrigger.stopDate = currentDate + (1000 * 70);
+            newTrigger.startDate = startDate;
+            newTrigger.stopDate = startDate + minuteInterval;
         }
         else if (alarmType === 'date') {
-            newTrigger.date = currentDate + (1000 * 60);
+            newTrigger.date = startDate;
         }
         else {
             newTrigger.cron = '* * * * *';
-            newTrigger.stopDate = currentDate + (1000 * 70);
+            newTrigger.stopDate = startDate + minuteInterval;
         }
 
         return newTrigger;
