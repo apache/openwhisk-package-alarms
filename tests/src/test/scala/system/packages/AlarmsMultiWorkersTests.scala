@@ -24,9 +24,8 @@ import common._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{FlatSpec, Matchers}
-import spray.json.DefaultJsonProtocol.StringJsonFormat
 import spray.json.DefaultJsonProtocol._
-import spray.json.{pimpAny, _}
+import spray.json._
 import whisk.core.WhiskConfig
 import whisk.core.database.test.ExtendedCouchDbRestClient
 import whisk.utils.{JsHelpers, retry}
