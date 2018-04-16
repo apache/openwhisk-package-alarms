@@ -20,8 +20,8 @@ import common._
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-import spray.json.DefaultJsonProtocol.{IntJsonFormat, LongJsonFormat, StringJsonFormat}
-import spray.json.pimpAny
+import spray.json.DefaultJsonProtocol._
+import spray.json._
 
 /**
  * Tests for alarms trigger service
