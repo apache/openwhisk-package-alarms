@@ -466,7 +466,21 @@ module.exports = function(logger, triggerDB, redisClient) {
                 .then(activeHost => {
                     return utils.initActiveHost(activeHost);
                 })
-                .then(resolve)
+                .then(() => {
+                    process.on('SIGTERM', function onSigterm() {
+                        if (utils.activeHost === utils.host) {
+                            var redundantHost = utils.host === 'host0' ? 'host1' : 'host0';
+                            utils.redisClient.hsetAsync(utils.redisHash, utils.redisKey, redundantHost)
+                            .then(() => {
+                                utils.redisClient.publish(utils.redisHash, redundantHost);
+                            })
+                            .catch(err => {
+                                logger.error(method, err);
+                            });
+                            }
+                        });
+                    resolve();
+                })
                 .catch(err => {
                     reject(err);
                 });
