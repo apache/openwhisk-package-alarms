@@ -5,6 +5,9 @@ var safeStringify = require('json-stringify-safe');
 
 var apiKeyRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-zA-Z]{64}/g;
 
+var worker = process.env.WORKER || 'worker0';
+var host = process.env.HOST_INDEX || 'host0';
+
 var logger = new winston.Logger({
     transports: [
         new winston.transports.Console({
@@ -13,7 +16,7 @@ var logger = new winston.Logger({
             },
             formatter: function(options) {
                 // Return string will be passed to logger.
-                return '[' + options.timestamp() +'] ['+ options.level.toUpperCase() +'] [??] [alarmsTrigger] ' +  options.message;
+                return `[${options.timestamp()}] [${options.level.toUpperCase()}] [${worker}] [${host}] [alarmsTrigger] ${options.message}`;
             }
         })
     ],
