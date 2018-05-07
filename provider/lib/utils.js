@@ -7,7 +7,7 @@ var CronAlarm = require('./cronAlarm.js');
 var IntervalAlarm = require('./intervalAlarm.js');
 var Sanitizer = require('./sanitizer');
 
-module.exports = function(logger, triggerDB, redisClient) {
+module.exports = function(logger, triggerDB, redisClient, discoverNode) {
 
     this.triggers = {};
     this.endpointAuth = process.env.ENDPOINT_AUTH;
@@ -22,6 +22,7 @@ module.exports = function(logger, triggerDB, redisClient) {
     this.uriHost ='https://' + this.routerHost;
     this.sanitizer = new Sanitizer(logger, triggerDB, this.uriHost);
     this.monitorStatus = {};
+    this.discover = discoverNode;
 
     var retryDelay = constants.RETRY_DELAY;
     var retryAttempts = constants.RETRY_ATTEMPTS;
@@ -159,7 +160,11 @@ module.exports = function(logger, triggerDB, redisClient) {
     };
 
     this.shouldFireTrigger = function(trigger) {
-        return trigger.monitor || utils.activeHost === utils.host;
+        if (!trigger.monitor && utils.discover){
+            return utils.discover.me.isMaster;
+        } else {
+            return trigger.monitor || utils.activeHost === utils.host;
+        }
     };
 
     this.hasTriggersRemaining = function(trigger) {
