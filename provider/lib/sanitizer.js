@@ -2,7 +2,7 @@ var request = require('request');
 
 module.exports = function(logger, triggerDB, uriHost) {
 
-    var sanitizer = this;
+    var self = this;
 
     this.deleteTriggerFromDB = function(triggerID, retryCount) {
         var method = 'deleteTriggerFromDB';
@@ -14,7 +14,7 @@ module.exports = function(logger, triggerDB, uriHost) {
                     if (err) {
                         if (err.statusCode === 409 && retryCount < 5) {
                             setTimeout(function () {
-                                sanitizer.deleteTriggerFromDB(triggerID, (retryCount + 1));
+                                self.deleteTriggerFromDB(triggerID, (retryCount + 1));
                             }, 1000);
                         }
                         else {
@@ -53,7 +53,7 @@ module.exports = function(logger, triggerDB, uriHost) {
             }
             else {
                 //delete the trigger
-                sanitizer.deleteTrigger(dataTrigger, auth, 0)
+                self.deleteTrigger(dataTrigger, auth, 0)
                 .then((info) => {
                     logger.info(method, triggerIdentifier, info);
                     if (body) {
@@ -62,7 +62,7 @@ module.exports = function(logger, triggerDB, uriHost) {
                             for (var rule in jsonBody.rules) {
                                 var qualifiedName = rule.split('/');
                                 var uri = uriHost + '/api/v1/namespaces/' + qualifiedName[0] + '/rules/' + qualifiedName[1];
-                                sanitizer.deleteRule(rule, uri, auth, 0);
+                                self.deleteRule(rule, uri, auth, 0);
                             }
                         }
                         catch (err) {
@@ -96,7 +96,7 @@ module.exports = function(logger, triggerDB, uriHost) {
                     if (!error && response.statusCode === 409 && retryCount < 5) {
                         logger.info(method, 'attempting to delete trigger again', triggerIdentifier, 'Retry Count:', (retryCount + 1));
                         setTimeout(function () {
-                            sanitizer.deleteTrigger(dataTrigger, auth, (retryCount + 1))
+                            self.deleteTrigger(dataTrigger, auth, (retryCount + 1))
                             .then(info => {
                                 resolve(info);
                             })
@@ -131,7 +131,7 @@ module.exports = function(logger, triggerDB, uriHost) {
                 if (!error && response.statusCode === 409 && retryCount < 5) {
                     logger.info(method, 'attempting to delete rule again', rule, 'Retry Count:', (retryCount + 1));
                     setTimeout(function () {
-                        sanitizer.deleteRule(rule, uri, auth, (retryCount + 1));
+                        self.deleteRule(rule, uri, auth, (retryCount + 1));
                     }, 1000);
                 } else {
                     logger.error(method, rule, 'rule delete request failed');
@@ -172,7 +172,7 @@ module.exports = function(logger, triggerDB, uriHost) {
             });
         })
         .then(triggerID => {
-            sanitizer.deleteTriggerFromDB(triggerID, 0);
+            self.deleteTriggerFromDB(triggerID, 0);
         })
         .catch(err => {
             logger.error(method, triggerID, 'an error occurred while deleting the trigger feed', err);

@@ -13,7 +13,6 @@ module.exports = function(logger, utils) {
     var alarmTypes = ['interval', 'date', 'cron'];
     var alarmTypeIndex = 0;
     var monitorStages = ['triggerStarted', 'triggerFired', 'triggerStopped'];
-    var healthMonitor = this;
 
     // Health Logic
     this.health = function (req, res) {
@@ -91,18 +90,18 @@ module.exports = function(logger, utils) {
 
         var triggerURL = utils.uriHost + '/api/v1/namespaces/_/triggers/' + triggerName;
         var triggerID = `${apikey}/_/${triggerName}`;
-        healthMonitor.createTrigger(triggerURL, auth)
+        createTrigger(triggerURL, auth)
         .then((info) => {
             logger.info(method, triggerID, info);
-            var newTrigger = healthMonitor.createAlarmTrigger(triggerID, apikey, alarmType);
-            healthMonitor.createTriggerInDB(triggerID, newTrigger);
+            var newTrigger = createAlarmTrigger(triggerID, apikey, alarmType);
+            createTriggerInDB(triggerID, newTrigger);
         })
         .catch(err => {
             logger.error(method, triggerID, err);
         });
     };
 
-    this.createAlarmTrigger = function(triggerID, apikey, alarmType) {
+    function createAlarmTrigger(triggerID, apikey, alarmType) {
         var method = 'createAlarmTrigger';
 
         var newTrigger = {
@@ -131,9 +130,9 @@ module.exports = function(logger, utils) {
         }
 
         return newTrigger;
-    };
+    }
 
-    this.createTrigger = function(triggerURL, auth) {
+    function createTrigger(triggerURL, auth) {
         var method = 'createTrigger';
 
         return new Promise(function(resolve, reject) {
@@ -155,9 +154,9 @@ module.exports = function(logger, utils) {
                 }
             });
         });
-    };
+    }
 
-    this.createTriggerInDB = function(triggerID, newTrigger) {
+    function createTriggerInDB (triggerID, newTrigger) {
         var method = 'createTriggerInDB';
 
         utils.db.insert(newTrigger, triggerID, function (err) {
@@ -168,6 +167,6 @@ module.exports = function(logger, utils) {
                 logger.error(method, triggerID, err);
             }
         });
-    };
+    }
 
 };
