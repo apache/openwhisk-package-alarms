@@ -22,7 +22,8 @@ module.exports = function(logger, triggerDB, redisClient) {
     this.routerHost = process.env.ROUTER_HOST || 'localhost';
     this.worker = process.env.WORKER || 'worker0';
     this.host = process.env.HOST_INDEX || 'host0';
-    this.activeHost = 'host0'; //default value on init (will be updated for existing redis)
+    this.hostPrefix = this.host.replace(/\d+$/, '');
+    this.activeHost = `${this.hostPrefix}0`; //default value on init (will be updated for existing redis)
     this.db = triggerDB;
     this.redisClient = redisClient;
     this.redisKey = redisKeyPrefix + '_' + this.worker;
@@ -468,7 +469,7 @@ module.exports = function(logger, triggerDB, redisClient) {
                 .then(() => {
                     process.on('SIGTERM', function onSigterm() {
                         if (self.activeHost === self.host) {
-                            var redundantHost = self.host === 'host0' ? 'host1' : 'host0';
+                            var redundantHost = self.host === `${self.hostPrefix}0` ? `${self.hostPrefix}1` : `${self.hostPrefix}0`;
                             self.redisClient.hsetAsync(self.redisKey, self.redisField, redundantHost)
                             .then(() => {
                                 self.redisClient.publish(self.redisKey, redundantHost);
@@ -476,8 +477,8 @@ module.exports = function(logger, triggerDB, redisClient) {
                             .catch(err => {
                                 logger.error(method, err);
                             });
-                            }
-                        });
+                        }
+                    });
                     resolve();
                 })
                 .catch(err => {
