@@ -24,7 +24,7 @@ module.exports = function(logger, utils) {
               return;
           }
 
-          var redundantHost = utils.host === 'host0' ? 'host1' : 'host0';
+          var redundantHost = utils.host === `${utils.hostPrefix}0` ? `${utils.hostPrefix}1` : `${utils.hostPrefix}0`;
           var activeHost = query === 'true' ? utils.host : redundantHost;
           if (utils.activeHost !== activeHost) {
               if (utils.redisClient) {
