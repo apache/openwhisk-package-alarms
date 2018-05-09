@@ -28,10 +28,10 @@ module.exports = function(logger, utils) {
           var activeHost = query === 'true' ? utils.host : redundantHost;
           if (utils.activeHost !== activeHost) {
               if (utils.redisClient) {
-                  utils.redisClient.hsetAsync(utils.redisHash, utils.redisKey, activeHost)
+                  utils.redisClient.hsetAsync(utils.redisKey, utils.redisField, activeHost)
                   .then(() => {
                       response.active = 'swapping';
-                      utils.redisClient.publish(utils.redisHash, activeHost);
+                      utils.redisClient.publish(utils.redisKey, activeHost);
                       logger.info(method, 'Active host swap in progress');
                       res.send(response);
                   })
