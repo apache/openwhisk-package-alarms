@@ -78,7 +78,7 @@ class AlarmsFeedTests
             }
 
             // get activation list of the trigger
-            val activations = wsk.activation.pollFor(N = 4, Some(triggerName)).length
+            val activations = wsk.activation.pollFor(N = 4, Some(triggerName), retries = 30).length
             println(s"Found activation size: $activations")
             activations should be(3)
     }
