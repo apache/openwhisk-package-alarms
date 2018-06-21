@@ -36,6 +36,7 @@ class AlarmsFeedTests
     val wskprops = WskProps()
     val wsk = new Wsk
     val defaultAction = Some(TestUtils.getTestActionFilename("hello.js"))
+    val maxRetries = System.getProperty("max.retries", "100").toInt
 
     behavior of "Alarms trigger service"
 
@@ -67,7 +68,7 @@ class AlarmsFeedTests
                 (trigger, name) =>
                 trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
                     "trigger_payload" -> "alarmTest".toJson,
-                    "cron" -> "* * * * * *".toJson,
+                    "cron" -> "* * * * *".toJson,
                     "maxTriggers" -> 1.toJson))
             }
 
@@ -77,7 +78,7 @@ class AlarmsFeedTests
             }
 
             // get activation list of the trigger
-            val activations = wsk.activation.pollFor(N = 2, Some(triggerName), retries = 30).length
+            val activations = wsk.activation.pollFor(N = 2, Some(triggerName), retries = maxRetries).length
             println(s"Found activation size: $activations")
             activations should be(1)
     }
