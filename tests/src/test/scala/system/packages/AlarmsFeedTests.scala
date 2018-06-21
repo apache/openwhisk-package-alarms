@@ -35,12 +35,11 @@ class AlarmsFeedTests
 
     val wskprops = WskProps()
     val wsk = new Wsk
-
     val defaultAction = Some(TestUtils.getTestActionFilename("hello.js"))
 
     behavior of "Alarms trigger service"
 
-    it should "should disable after reaching max triggers" in withAssetCleaner(wskprops) {
+    it should "disable after reaching max triggers" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
@@ -69,7 +68,7 @@ class AlarmsFeedTests
                 trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
                     "trigger_payload" -> "alarmTest".toJson,
                     "cron" -> "* * * * * *".toJson,
-                    "maxTriggers" -> 3.toJson))
+                    "maxTriggers" -> 1.toJson))
             }
 
             // create rule
@@ -78,9 +77,9 @@ class AlarmsFeedTests
             }
 
             // get activation list of the trigger
-            val activations = wsk.activation.pollFor(N = 4, Some(triggerName), retries = 30).length
+            val activations = wsk.activation.pollFor(N = 2, Some(triggerName), retries = 30).length
             println(s"Found activation size: $activations")
-            activations should be(3)
+            activations should be(1)
     }
 
     it should "update cron, startDate and stopDate parameters" in withAssetCleaner(wskprops) {
