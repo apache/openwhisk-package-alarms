@@ -16,7 +16,7 @@
     "json-stringify-safe": "^5.0.1",
     "http-status-codes": "^1.0.5",
     "request-promise": "^1.0.2",
-    "redis":"^2.7.1",
+    "redis": "^2.7.1",
     "bluebird": "^3.5.0",
     "systeminformation": "^3.19.0",
     "long-timeout": "^0.1.1"
