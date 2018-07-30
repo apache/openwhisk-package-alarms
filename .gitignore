@@ -5,3 +5,11 @@ node_modules/
 .vscode
 action/*.zip
 action/package.json
+
+# Eclipse
+bin/
+**/.project
+.settings/
+.classpath
+.cache-main
+.cache-tests
