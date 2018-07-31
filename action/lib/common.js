@@ -100,7 +100,7 @@ function sendError(statusCode, error, message) {
     return {
         statusCode: statusCode,
         headers: { 'Content-Type': 'application/json' },
-        body: new Buffer(JSON.stringify(params)).toString('base64')
+        body: params
     };
 }
 
