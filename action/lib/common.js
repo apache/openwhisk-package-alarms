@@ -133,6 +133,14 @@ function constructObject(data, isPayload) {
     return jsonObject;
 }
 
+function createUrl(url, username, password) {
+    if (username && password) {
+      var urlComponents = url.split('://');
+      return urlComponents[0] + '://' + encodeURIComponent(username) + ':' + encodeURIComponent(password) + '@' + urlComponents[1];
+    } else {
+      return url;
+    }
+}
 
 module.exports = {
     'requestHelper': requestHelper,
@@ -140,5 +148,6 @@ module.exports = {
     'verifyTriggerAuth': verifyTriggerAuth,
     'parseQName': parseQName,
     'sendError': sendError,
-    'constructObject': constructObject
+    'constructObject': constructObject,
+    'createUrl': createUrl
 };
