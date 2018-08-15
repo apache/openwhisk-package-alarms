@@ -1,0 +1,42 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more contributor
+# license agreements; and to You under the Apache License, Version 2.0.
+---
+# This task will install the standard actions and packages available in openwhisk-catalog repos.
+
+- set_fact:
+    provider_repo_url={{ item.value.url }}
+    provider_workers={{ item.value.workers }}
+    edge_host={{ whisk_api_host_name | default(groups['edge'] | first) }}
+    version="HEAD"
+    repo_update="yes"
+    install_actions=true
+    api_host={{ whisk_api_host_name | default(groups['edge'] | first) }}
+    db_url="{{ db.protocol }}://{{ item.value.dbCredentials.user }}:{{ item.value.dbCredentials.pass }}@{{ db.host }}:{{ db.port }}"
+
+- set_fact:
+    version={{ item.value.version }}
+  when: item.value.version is defined
+
+- set_fact:
+    repo_update={{ item.value.repo_update }}
+  when: item.value.repo_update is defined
+
+- set_fact:
+    install_actions={{ item.value.install_actions }}
+  when: item.value.install_actions is defined
+
+#- name: download the provider repository to the provider location if necessary
+#  git:
+#    depth: 1
+#    repo: "{{ provider_repo_url }}"
+#    dest: "{{ provider_location }}"
+#    update: "{{ repo_update }}"
+#    version: "{{ version }}"
+
+- name: install the actions from the provider location
+  shell: ./installCatalog.sh {{ catalog_auth_key }} {{ edge_host }} {{ db_url }} {{ db_prefix }} {{ api_host }} {{ provider_workers }} chdir={{ provider_location }}
+  environment:
+    OPENWHISK_HOME: "{{ openwhisk_home }}"
+  when: install_actions == true
+  retries: 3
+  delay: 5

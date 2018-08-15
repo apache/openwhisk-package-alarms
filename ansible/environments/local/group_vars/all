@@ -1,0 +1,86 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more contributor
+# license agreements; and to You under the Apache License, Version 2.0.
+
+openwhisk_tmp_dir: "{{ lookup('env', 'OPENWHISK_TMP_DIR')|default('/tmp', true) }}"
+config_root_dir: "{{ openwhisk_tmp_dir }}/wskconf"
+whisk_logs_dir: "{{ openwhisk_tmp_dir }}/wsklogs"
+coverage_enabled: "{{ lookup('env', 'GRADLE_COVERAGE') | default('false', true) | bool}}"
+coverage_logs_dir: "{{ openwhisk_tmp_dir }}/wskcov"
+docker_registry: ""
+docker_dns: ""
+runtimes_bypass_pull_for_local_images: true
+invoker_use_runc: "{{ ansible_distribution != 'MacOSX' }}"
+
+db_prefix: whisk_local_
+
+# API GW connection configuration
+apigw_auth_user: ""
+apigw_auth_pwd: ""
+apigw_host_v2: "http://{{ groups['apigateway']|first }}:{{apigateway.port.api}}/v2"
+
+invoker_allow_multiple_instances: true
+
+# Set kafka configuration
+kafka_heap: '512m'
+kafka_topics_completed_retentionBytes: 104857600
+kafka_topics_completed_retentionMS: 300000
+kafka_topics_health_retentionBytes: 104857600
+kafka_topics_health_retentionMS: 300000
+kafka_topics_invoker_retentionBytes: 104857600
+kafka_topics_invoker_retentionMS: 300000
+
+env_hosts_dir: "{{ playbook_dir }}/environments/local"
+
+mode: deploy
+openwhisk_home: "{{ lookup('env', 'OPENWHISK_HOME') | default(playbook_dir ~ '/..', true) }}"
+
+catalog_repos:
+  openwhisk-catalog:
+    url: https://github.com/apache/incubator-openwhisk-catalog.git
+    # Set the local location as the same level as openwhisk home, but it can be changed.
+    location: "{{ openwhisk_home }}/../openwhisk-catalog"
+    version: "HEAD"
+repo_update: "no"
+
+cli:
+  path: "{{ openwhisk_home }}/bin/wsk"
+  dir:
+    become: "{{ cli_dir_become | default(false) }}"
+
+catalog_auth_key: "{{ openwhisk_home }}/ansible/files/auth.whisk.system"
+
+docker:
+  restart:
+    policy: always
+  pull:
+    retries: 10
+    delay: 10
+
+serviceprovider:
+  alarmstrigger:
+    port: 11001
+
+db:
+  provider: "{{ db_provider | default(lookup('ini', 'db_provider section=db_creds file={{ openwhisk_home }}/ansible/db_local.ini')) }}"
+  protocol: "{{ db_protocol | default(lookup('ini', 'db_protocol section=db_creds file={{ openwhisk_home }}/ansible/db_local.ini')) }}"
+  port: "{{ db_port | default(lookup('ini', 'db_port section=db_creds file={{ openwhisk_home }}/ansible/db_local.ini')) }}"
+  host: "{{ db_host | default(lookup('ini', 'db_host section=db_creds file={{ openwhisk_home }}/ansible/db_local.ini')) }}"
+  credentials:
+    alarmtrigger:
+      user: "{{ db_username | default(lookup('ini', 'db_username section=db_creds file={{ openwhisk_home }}/ansible/db_local.ini')) }}"
+      pass: "{{ db_password | default(lookup('ini', 'db_password section=db_creds file={{ openwhisk_home }}/ansible/db_local.ini')) }}"
+
+provider_repos:
+  openwhisk_package_alarms:
+    docker_image: "openwhisk/alarmprovider"
+    docker_tag: "latest"
+    url: https://github.com/apache/incubator-openwhisk-package-alarms.git
+    version: "latest"
+    repo_update: "yes"
+    install_actions: true
+    workers: '''["worker0"]'''
+    dbCredentials: "{{ db.credentials.alarmtrigger }}"
+
+provider_location: "{{ playbook_dir }}/.."
+
+catalog_auth_key: "{{ openwhisk_home }}/ansible/files/auth.whisk.system"

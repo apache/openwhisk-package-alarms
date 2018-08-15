@@ -27,8 +27,8 @@ git clone https://github.com/apache/incubator-openwhisk.git openwhisk
 cd $HOMEDIR/openwhisk
 ./tools/travis/setup.sh
 
-TERM=dumb ./gradlew \
-:common:scala:install \
-:core:controller:install \
-:core:invoker:install \
-:tests:install
+#TERM=dumb ./gradlew \
+#:common:scala:install \
+#:core:controller:install \
+#:core:invoker:install \
+#:tests:install

@@ -1,0 +1,15 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more contributor
+# license agreements; and to You under the Apache License, Version 2.0.
+---
+# This playbook deploys the cloudant, alarms and kafka service providers and then installs the actions for each
+# of the providers.
+# If applicable to the environment, the service contract package is installed on component's VM.
+
+- import_playbook: alarmstrigger.yml
+
+- hosts: ansible
+  tasks:
+    - include_tasks: tasks/installAlarmAction.yml
+      with_dict: "{{ provider_repos }}"
+      when: mode == "deploy"
+

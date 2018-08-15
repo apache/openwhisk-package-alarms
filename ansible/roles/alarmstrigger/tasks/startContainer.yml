@@ -1,0 +1,40 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more contributor
+# license agreements; and to You under the Apache License, Version 2.0.
+
+- name: "(re)start alarms trigger"
+  vars:
+    auth: "{{ lookup('file', '{{ openwhisk_home }}/ansible/files/auth.whisk.system') }}"
+    v8_heap: "{{ provider_v8_heap | default(4096) }}"
+  docker_container:
+    name: "{{ containerName }}"
+    image: "{{ provider_repos.openwhisk_package_alarms.docker_image }}:{{ provider_repos.openwhisk_package_alarms.docker_tag }}"
+    command: ["/bin/bash", "-c", "'node --max-old-space-size={{ v8_heap }} /alarmsTrigger/app.js >> /logs/alarmsTrigger_logs.log 2>&1'"]
+    state: started
+    recreate: true
+    restart_policy: "{{ docker.restart.policy }}"
+    hostname: "{{ containerName }}"
+    env:
+      "ROUTER_HOST": "{{ whisk_api_host_name | default(groups['edge'] | first) }}"
+      "DB_PREFIX": "{{ db_prefix }}"
+      "DB_USERNAME": "{{ db.credentials.alarmtrigger.user }}"
+      "DB_PASSWORD": "{{ db.credentials.alarmtrigger.pass }}"
+      "DB_HOST": "{{ db.host }}:{{ db.port }}"
+      "DB_PROTOCOL": "{{ db.protocol }}"
+      "HOST_INDEX": "host{{ host_index }}"
+      "HOST_MACHINE": "{{ inventory_hostname }}"
+      "ENDPOINT_AUTH": "{{ auth }}"
+      #"REDIS_URL": "{{ redis_url }}"
+      "WORKER": "{{ worker }}"
+      "MONITORING_AUTH": "{{ auth }}"
+      "MONITORING_INTERVAL": "{{ 900000 }}"
+    ports:
+      - "{{ serviceprovider.alarmstrigger.port }}:8080"
+    volumes:
+      - "{{ whisk_logs_dir }}/{{containerName}}:/logs"
+
+- name: wait until alarms trigger in this host is up and running
+  wait_for:
+    delay: 2
+    host: "{{ inventory_hostname }}"
+    port: "{{ serviceprovider.alarmstrigger.port }}"
+    timeout: 60

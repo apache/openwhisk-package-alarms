@@ -1,0 +1,15 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more contributor
+# license agreements; and to You under the Apache License, Version 2.0.
+---
+# In deploy mode it will deploy the alarms trigger service.
+# In clean mode it will remove the alarms trigger service container.
+
+- import_tasks: deploy.yml
+  vars:
+    containerName: "alarmsTrigger-{{worker}}{{host_index}}"
+  when: mode == "deploy"
+
+- import_tasks: clean.yml
+  vars:
+    containerName: "alarmsTrigger-{{worker}}{{host_index}}"
+  when: mode == "clean"

@@ -1,0 +1,23 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more contributor
+# license agreements; and to You under the Apache License, Version 2.0.
+---
+- name: "Check the existence of the local alarm provider image"
+  command: >
+    echo `docker images {{ provider_repos.openwhisk_package_alarms.docker_image }}:{{ provider_repos.openwhisk_package_alarms.docker_tag }}` | grep -v grep | grep -w {{ provider_repos.openwhisk_package_alarms.docker_image }} | grep -w {{ provider_repos.openwhisk_package_alarms.docker_tag }}
+  register: check_is_local_cli_image_present
+
+- name: "Pull the image of alarms provider from dockerhub, if it is missing on local machine"
+  shell: "docker pull {{ provider_repos.openwhisk_package_alarms.docker_image }}:{{ provider_repos.openwhisk_package_alarms.docker_tag }}"
+  retries: "{{ docker.pull.retries }}"
+  delay: "{{ docker.pull.delay }}"
+  when: check_is_local_cli_image_present | bool == False
+
+- name: ensure alarmsTrigger log directory is created with permissions
+  file:
+    path: "{{ whisk_logs_dir }}/{{ containerName }}"
+    state: directory
+    mode: 0777
+  become: true
+
+# start the container for this worker pair
+- import_tasks: startContainer.yml
