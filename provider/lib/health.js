@@ -1,6 +1,5 @@
 var si = require('systeminformation');
 var v8 = require('v8');
-var request = require('request');
 var _ = require('lodash');
 
 module.exports = function(logger, utils) {
@@ -46,8 +45,6 @@ module.exports = function(logger, utils) {
     this.monitor = function(apikey) {
         var method = 'monitor';
 
-        var auth = apikey.split(':');
-
         if (triggerName) {
             monitorStatus = Object.assign({}, utils.monitorStatus);
             utils.monitorStatus = {};
@@ -64,11 +61,12 @@ module.exports = function(logger, utils) {
             utils.sanitizer.deleteTriggerFromDB(existingID, 0);
 
             //delete the trigger
-            var dataTrigger = {
+            var triggerData = {
+                apikey: apikey,
                 uri: utils.uriHost + '/api/v1/namespaces/_/triggers/' + triggerName,
                 triggerID: existingID
             };
-            utils.sanitizer.deleteTrigger(dataTrigger, auth, 0)
+            utils.sanitizer.deleteTrigger(triggerData, 0)
             .then((info) => {
                 logger.info(method, existingID, info);
             })
@@ -90,7 +88,7 @@ module.exports = function(logger, utils) {
 
         var triggerURL = utils.uriHost + '/api/v1/namespaces/_/triggers/' + triggerName;
         var triggerID = `${apikey}/_/${triggerName}`;
-        createTrigger(triggerURL, auth)
+        createTrigger(triggerURL, apikey)
         .then((info) => {
             logger.info(method, triggerID, info);
             var newTrigger = createAlarmTrigger(triggerID, apikey, alarmType);
@@ -132,17 +130,13 @@ module.exports = function(logger, utils) {
         return newTrigger;
     }
 
-    function createTrigger(triggerURL, auth) {
+    function createTrigger(triggerURL, apikey) {
         var method = 'createTrigger';
 
         return new Promise(function(resolve, reject) {
-            request({
+            utils.authRequest({apikey: apikey}, {
                 method: 'put',
                 uri: triggerURL,
-                auth: {
-                    user: auth[0],
-                    pass: auth[1]
-                },
                 json: true,
                 body: {}
             }, function (error, response) {

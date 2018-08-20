@@ -23,6 +23,7 @@ DB_NAME="${4}alarmservice"
 APIHOST="$5"
 WORKERS="$6"
 LIMIT_CRON_FIELDS="${LIMIT_CRON_FIELDS}"
+ACTION_RUNTIME_VERSION=${ACTION_RUNTIME_VERSION:="nodejs:6"}
 
 # If the auth key file exists, read the key in the file. Otherwise, take the
 # first argument as the key itself.
@@ -64,18 +65,18 @@ fi
 cp -f alarmFeed_package.json package.json
 zip -r alarmFeed.zip lib package.json alarm.js
 
-$WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" alarms/alarm "$PACKAGE_HOME/action/alarmFeed.zip" \
+$WSK_CLI -i --apihost "$EDGEHOST" action update --kind "$ACTION_RUNTIME_VERSION" --auth "$AUTH" alarms/alarm "$PACKAGE_HOME/action/alarmFeed.zip" \
      -a description 'Fire trigger when alarm occurs' \
      -a parameters '[ {"name":"cron", "required":true}, {"name":"startDate", "required":false}, {"name":"stopDate", "required":false} ]' \
      -a feed true
 
-$WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" alarms/once "$PACKAGE_HOME/action/alarmFeed.zip" \
+$WSK_CLI -i --apihost "$EDGEHOST" action update --kind "$ACTION_RUNTIME_VERSION" --auth "$AUTH" alarms/once "$PACKAGE_HOME/action/alarmFeed.zip" \
      -a description 'Fire trigger once when alarm occurs' \
      -a parameters '[ {"name":"date", "required":true}, {"name":"deleteAfterFire", "required":false} ]' \
      -a feed true \
      -p fireOnce true
 
-$WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" alarms/interval "$PACKAGE_HOME/action/alarmFeed.zip" \
+$WSK_CLI -i --apihost "$EDGEHOST" action update --kind "$ACTION_RUNTIME_VERSION" --auth "$AUTH" alarms/interval "$PACKAGE_HOME/action/alarmFeed.zip" \
      -a description 'Fire trigger at specified interval' \
      -a parameters '[ {"name":"minutes", "required":true}, {"name":"startDate", "required":false}, {"name":"stopDate", "required":false} ]' \
      -a feed true \
@@ -106,7 +107,7 @@ fi
 
 zip -r alarmWebAction.zip lib package.json alarmWebAction.js node_modules
 
-$WSK_CLI -i --apihost "$EDGEHOST" action update --kind nodejs:6 --auth "$AUTH" alarmsWeb/alarmWebAction "$PACKAGE_HOME/action/alarmWebAction.zip" \
+$WSK_CLI -i --apihost "$EDGEHOST" action update --kind "$ACTION_RUNTIME_VERSION" --auth "$AUTH" alarmsWeb/alarmWebAction "$PACKAGE_HOME/action/alarmWebAction.zip" \
     -a description 'Create/Delete a trigger in alarms provider Database' \
     --web true
 

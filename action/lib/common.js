@@ -1,4 +1,6 @@
 const request = require('request');
+const openwhisk = require('openwhisk');
+const config = require('./config');
 
 function requestHelper(url, input, method) {
 
@@ -45,33 +47,33 @@ function createWebParams(rawParams) {
     delete webparams.apihost;
 
     webparams.triggerName = triggerName;
+    config.addAdditionalData(webparams);
 
     return webparams;
 }
 
-function verifyTriggerAuth(triggerURL, authKey, isDelete) {
-    var auth = authKey.split(':');
+function verifyTriggerAuth(triggerData, isDelete) {
+    var owConfig = config.getOpenWhiskConfig(triggerData);
+    var ow = openwhisk(owConfig);
 
     return new Promise(function(resolve, reject) {
-
-        request({
-            method: 'get',
-            url: triggerURL,
-            auth: {
-                user: auth[0],
-                pass: auth[1]
-            },
-            rejectUnauthorized: false
-        }, function(err, response) {
-            if (err) {
-                reject(sendError(400, 'Trigger authentication request failed.', err.message));
-            }
-            else if(response.statusCode >= 400 && !(isDelete && response.statusCode === 404)) {
-                reject(sendError(response.statusCode, 'Trigger authentication request failed.'));
-            }
-            else {
-                resolve();
-            }
+        ow.triggers.get(triggerData.name)
+        .then(() => {
+            resolve();
+        })
+        .catch(err => {
+           if (err.statusCode) {
+               var statusCode = err.statusCode;
+               if (!(isDelete && statusCode === 404)) {
+                   reject(sendError(statusCode, 'Trigger authentication request failed.'));
+               }
+               else {
+                   resolve();
+               }
+           }
+           else {
+               reject(sendError(400, 'Trigger authentication request failed.', err.message));
+           }
         });
     });
 }
@@ -104,18 +106,27 @@ function sendError(statusCode, error, message) {
     };
 }
 
-function constructPayload(payload) {
-
-    var updatedPayload;
-    if (payload) {
-        if (typeof payload === 'string') {
-            updatedPayload = {payload: payload};
+function constructObject(data, isPayload) {
+    var jsonObject;
+    if (data) {
+        if (typeof data === 'string') {
+            if (isPayload) {
+                jsonObject = {payload: data};
+            }
+            else {
+                try {
+                    jsonObject = JSON.parse(data);
+                }
+                catch (e) {
+                    console.log('error parsing ' + data);
+                }
+            }
         }
-        if (typeof payload === 'object') {
-            updatedPayload = payload;
+        if (typeof data === 'object') {
+            jsonObject = data;
         }
     }
-    return updatedPayload;
+    return jsonObject;
 }
 
 
@@ -125,5 +136,5 @@ module.exports = {
     'verifyTriggerAuth': verifyTriggerAuth,
     'parseQName': parseQName,
     'sendError': sendError,
-    'constructPayload': constructPayload
+    'constructObject': constructObject
 };

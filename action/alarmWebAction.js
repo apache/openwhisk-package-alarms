@@ -1,21 +1,25 @@
-var CronJob = require('cron').CronJob;
-var moment = require('moment');
-
+const CronJob = require('cron').CronJob;
+const moment = require('moment');
 const common = require('./lib/common');
 const Database = require('./lib/Database');
 
 function main(params) {
 
-    if (!params.authKey) {
-        return common.sendError(400, 'no authKey parameter was provided');
-    }
     if (!params.triggerName) {
         return common.sendError(400, 'no trigger name parameter was provided');
     }
 
     var triggerParts = common.parseQName(params.triggerName);
-    var triggerID = `${params.authKey}/${triggerParts.namespace}/${triggerParts.name}`;
-    var triggerURL = `https://${params.apihost}/api/v1/namespaces/${triggerParts.namespace}/triggers/${triggerParts.name}`;
+    var triggerData = {
+        apikey: params.authKey,
+        name: triggerParts.name,
+        namespace: triggerParts.namespace,
+        additionalData: common.constructObject(params.additionalData),
+    };
+    var triggerID = `${triggerData.namespace}/${triggerData.name}`;
+    if (triggerData.apikey) {
+        triggerID = `${triggerData.apikey}/${triggerID}`;
+    }
 
     var workers = params.workers instanceof Array ? params.workers : [];
     var deleteAfterFireArray = ['false', 'true', 'rules'];
@@ -28,9 +32,6 @@ function main(params) {
         }
 
         var newTrigger = {
-            apikey: params.authKey,
-            name: triggerParts.name,
-            namespace: triggerParts.namespace,
             payload: params.trigger_payload || {},
             maxTriggers: params.maxTriggers || -1,
             status: {
@@ -38,6 +39,7 @@ function main(params) {
                 'dateChanged': Date.now()
             }
         };
+        Object.assign(newTrigger, triggerData);
 
         if (params.fireOnce) {
             if (!params.date) {
@@ -127,7 +129,7 @@ function main(params) {
         }
 
         return new Promise(function (resolve, reject) {
-            common.verifyTriggerAuth(triggerURL, params.authKey, false)
+            common.verifyTriggerAuth(triggerData, false)
             .then(() => {
                 db = new Database(params.DB_URL, params.DB_NAME);
                 return db.getWorkerID(workers);
@@ -152,7 +154,7 @@ function main(params) {
     }
     else if (params.__ow_method === "get") {
         return new Promise(function (resolve, reject) {
-            common.verifyTriggerAuth(triggerURL, params.authKey, false)
+            common.verifyTriggerAuth(triggerData, false)
             .then(() => {
                 db = new Database(params.DB_URL, params.DB_NAME);
                 return db.getTrigger(triggerID);
@@ -201,7 +203,7 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             var updatedParams = {};
 
-            common.verifyTriggerAuth(triggerURL, params.authKey, false)
+            common.verifyTriggerAuth(triggerData, false)
             .then(() => {
                 db = new Database(params.DB_URL, params.DB_NAME);
                 return db.getTrigger(triggerID);
@@ -212,7 +214,7 @@ function main(params) {
                 }
 
                 if (params.trigger_payload) {
-                    updatedParams.payload = common.constructPayload(params.trigger_payload);
+                    updatedParams.payload = common.constructObject(params.trigger_payload, true);
                 }
 
                 if (trigger.date) {
@@ -311,7 +313,7 @@ function main(params) {
     else if (params.__ow_method === "delete") {
 
         return new Promise(function (resolve, reject) {
-            common.verifyTriggerAuth(triggerURL, params.authKey, true)
+            common.verifyTriggerAuth(triggerData, true)
             .then(() => {
                 db = new Database(params.DB_URL, params.DB_NAME);
                 return db.getTrigger(triggerID);
@@ -361,10 +363,7 @@ function validateDate(date, paramName, startDate) {
 function hasSecondsGranularity(cron) {
 
     var fields = (cron + '').trim().split(/\s+/);
-
     return fields.length > 5 && fields[fields.length - 6] !== '0';
 }
 
 exports.main = main;
-
-
