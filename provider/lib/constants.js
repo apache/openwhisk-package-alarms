@@ -1,3 +1,6 @@
+// Licensed to the Apache Software Foundation (ASF) under one or more contributor
+// license agreements; and to You under the Apache License, Version 2.0.
+
 const TRIGGER_DB_SUFFIX = 'alarmservice';
 const DEFAULT_MAX_TRIGGERS = -1;
 const RETRY_ATTEMPTS = 10;
