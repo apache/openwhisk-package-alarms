@@ -5,6 +5,7 @@ const CronJob = require('cron').CronJob;
 const moment = require('moment');
 const common = require('./lib/common');
 const Database = require('./lib/Database');
+const config = require('./lib/config');
 
 function main(params) {
 
@@ -19,10 +20,7 @@ function main(params) {
         namespace: triggerParts.namespace,
         additionalData: common.constructObject(params.additionalData),
     };
-    var triggerID = `${triggerData.namespace}/${triggerData.name}`;
-    if (triggerData.apikey) {
-        triggerID = `${triggerData.apikey}/${triggerID}`;
-    }
+    var triggerID = config.constructTriggerID(triggerData);
 
     var workers = params.workers instanceof Array ? params.workers : [];
     var deleteAfterFireArray = ['false', 'true', 'rules'];
