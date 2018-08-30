@@ -222,9 +222,10 @@ module.exports = function(logger, triggerDB, redisClient) {
     function disableTrigger(triggerIdentifier, statusCode, message) {
         var method = 'disableTrigger';
 
-        triggerDB.get(triggerIdentifier, function (err, existing) {
-            if (!err) {
-                if (!existing.status || existing.status.active === true) {
+        triggerDB.getTrigger(triggerIdentifier)
+        .then((existing) => {
+
+            if (!existing.status || existing.status.active === true) {
                     var updatedTrigger = existing;
                     var status = {
                         'active': false,
@@ -233,21 +234,21 @@ module.exports = function(logger, triggerDB, redisClient) {
                     };
                     updatedTrigger.status = status;
 
-                    triggerDB.insert(updatedTrigger, triggerIdentifier, function (err) {
-                        if (err) {
-                            logger.error(method, 'there was an error while disabling', triggerIdentifier, 'in database.', err);
-                        }
-                        else {
-                            logger.info(method, 'trigger', triggerIdentifier, 'successfully disabled in database');
-                        }
-                    });
+                    triggerDB.updateTrigger(triggerIdentifier, updatedTrigger)
+                    .then((res) => {
+                        logger.info(method, 'trigger', triggerIdentifier, 'successfully disabled in database');
+                    })
+                    .catch((err) => {
+                        logger.error(method, 'there was an error while disabling', triggerIdentifier, 'in database.', err);
+                    })
+
                 }
-            }
-            else {
-                logger.info(method, 'could not find', triggerIdentifier, 'in database');
-                //make sure it is already stopped
-                stopTrigger(triggerIdentifier);
-            }
+
+        })
+        .catch((err) => {
+            logger.info(method, 'could not find', triggerIdentifier, 'in database');
+            //make sure it is already stopped
+            stopTrigger(triggerIdentifier);
         });
     }
 
@@ -273,6 +274,7 @@ module.exports = function(logger, triggerDB, redisClient) {
         setupFollow('now');
 
         logger.info(method, 'resetting system from last state');
+        //TODO understand trigger views
         triggerDB.view(viewDDName, triggersByWorker, {reduce: false, include_docs: true, key: self.worker}, function(err, body) {
             if (!err) {
                 body.rows.forEach(function (trigger) {
@@ -327,7 +329,7 @@ module.exports = function(logger, triggerDB, redisClient) {
 
     function setupFollow(seq) {
         var method = 'setupFollow';
-
+        //TODO check worker mechanism  
         try {
             var feed = triggerDB.follow({
                 since: seq,

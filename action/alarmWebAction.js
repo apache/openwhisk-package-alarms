@@ -131,7 +131,8 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE, 
+                    params.COSMOSDB_ROOT_DB, params.COSMOSDB_MASTERKEY);
                 return db.getWorkerID(workers);
             })
             .then((worker) => {
@@ -156,7 +157,8 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE, 
+                    params.COSMOSDB_ROOT_DB, params.COSMOSDB_MASTERKEY);
                 return db.getTrigger(triggerID);
             })
             .then(doc => {
@@ -205,7 +207,8 @@ function main(params) {
 
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE, 
+                    params.COSMOSDB_ROOT_DB, params.COSMOSDB_MASTERKEY);
                 return db.getTrigger(triggerID);
             })
             .then(trigger => {
@@ -315,7 +318,8 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, true)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE, 
+                    params.COSMOSDB_ROOT_DB, params.COSMOSDB_MASTERKEY);
                 return db.getTrigger(triggerID);
             })
             .then(trigger => {
@@ -364,6 +368,18 @@ function hasSecondsGranularity(cron) {
 
     var fields = (cron + '').trim().split(/\s+/);
     return fields.length > 5 && fields[fields.length - 6] !== '0';
+}
+
+function getDatabase(dbURL, dbName, dbType, cosmosdbRootDatabase, cosmosdbMasterKey) {
+    var db = new Database();
+    db.initDB(dbURL, dbName, dbType, cosmosdbRootDatabase, cosmosdbMasterKey)
+    .then((res) =>
+    {
+        return db;
+    })
+    .catch((err) => {
+        throw new Error(err);
+    })
 }
 
 exports.main = main;

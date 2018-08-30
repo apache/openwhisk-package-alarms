@@ -32,12 +32,13 @@ var dbPassword = process.env.DB_PASSWORD;
 var dbHost = process.env.DB_HOST;
 var dbProtocol = process.env.DB_PROTOCOL;
 var dbPrefix = process.env.DB_PREFIX;
+var dbType = process.env.DB_TYPE;
+var cosmosdbRootDatabase = process.env.COSMOS_ROOT_DB;
+var cosmosdbMasterKey = process.env.COSMOS_MASTER_KEY;
 var databaseName = dbPrefix + constants.TRIGGER_DB_SUFFIX;
 var redisUrl = process.env.REDIS_URL;
 var monitoringAuth = process.env.MONITORING_AUTH;
 var monitoringInterval = process.env.MONITORING_INTERVAL;
-var filterDDName = '_design/' + constants.FILTERS_DESIGN_DOC;
-var viewDDName = '_design/' + constants.VIEWS_DESIGN_DOC;
 
 // Create the Provider Server
 var server = http.createServer(app);
@@ -46,85 +47,14 @@ server.listen(app.get('port'), function() {
 });
 
 function createDatabase() {
-    var method = 'createDatabase';
-    logger.info(method, 'creating the trigger database');
-
-    var nano = require('nano')(dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
-
-    if (nano !== null) {
-        return new Promise(function (resolve, reject) {
-            nano.db.create(databaseName, function (err, body) {
-                if (!err) {
-                    logger.info(method, 'created trigger database:', databaseName);
-                }
-                else if (err.statusCode !== 412) {
-                    logger.info(method, 'failed to create trigger database:', databaseName, err);
-                }
-
-                var viewDD = {
-                    views: {
-                        triggers_by_worker: {
-                            map: function (doc) {
-                                if (doc.maxTriggers && (!doc.status || doc.status.active === true)) {
-                                    emit(doc.worker || 'worker0', 1);
-                                }
-                            }.toString(),
-                            reduce: '_count'
-                        }
-                    }
-                };
-
-                createDesignDoc(nano.db.use(databaseName), viewDDName, viewDD)
-                .then((db) => {
-                    var filterDD = {
-                        filters: {
-                            triggers_by_worker:
-                                function (doc, req) {
-                                    return doc.maxTriggers && ((!doc.worker && req.query.worker === 'worker0') ||
-                                            (doc.worker === req.query.worker));
-                                }.toString()
-                        }
-                    };
-                    return createDesignDoc(db, filterDDName, filterDD);
-                })
-                .then((db) => {
-                    resolve(db);
-                })
-                .catch(err => {
-                    reject(err);
-                });
-
-            });
-        });
-    }
-    else {
-        Promise.reject('nano provider did not get created.  check db URL: ' + dbHost);
-    }
-}
-
-function createDesignDoc(db, ddName, designDoc) {
-    var method = 'createDesignDoc';
-
-    return new Promise(function(resolve, reject) {
-
-        db.get(ddName, function (error, body) {
-            if (error) {
-                //new design doc
-                db.insert(designDoc, ddName, function (error, body) {
-                    if (error && error.statusCode !== 409) {
-                        logger.error(method, error);
-                        reject('design doc could not be created: ' + error);
-                    }
-                    else {
-                        resolve(db);
-                    }
-                });
-            }
-            else {
-                resolve(db);
-            }
-        });
-    });
+  var Database = require('./lib/database');
+  var db = new Database();
+  db.initDB(dbProtocol, dbUsername, dbPassword, dbHost, dbType, cosmosdbRootDatabase, 
+    cosmosdbMasterKey)
+  .then((res) => {
+    return db.createDatabase(databaseName);
+  })
+  .catch((err) throw new Error(err));
 }
 
 function createRedisClient() {
