@@ -329,7 +329,7 @@ module.exports = function(logger, triggerDB, redisClient) {
 
     function setupFollow(seq) {
         var method = 'setupFollow';
-        //TODO check worker mechanism  
+        //TODO check worker mechanism
         try {
             var feed = triggerDB.follow({
                 since: seq,

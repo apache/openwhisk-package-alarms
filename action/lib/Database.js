@@ -9,7 +9,7 @@ module.exports = function() {
 
         var dbType = typeof dbType  !== 'undefined' ?  dbType  : "couchdb";
 
-        return new Promise((resolve, reject) => { 
+        return new Promise((resolve, reject) => {
             
             if(dbType === "couchdb") {
                 console.log("using couchdb");

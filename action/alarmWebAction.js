@@ -131,7 +131,7 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE, 
+                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE,
                     params.COSMOSDB_ROOT_DB, params.COSMOSDB_MASTERKEY);
                 return db.getWorkerID(workers);
             })
@@ -157,7 +157,7 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE, 
+                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE,
                     params.COSMOSDB_ROOT_DB, params.COSMOSDB_MASTERKEY);
                 return db.getTrigger(triggerID);
             })
@@ -207,7 +207,7 @@ function main(params) {
 
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE, 
+                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE,
                     params.COSMOSDB_ROOT_DB, params.COSMOSDB_MASTERKEY);
                 return db.getTrigger(triggerID);
             })
@@ -318,7 +318,7 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, true)
             .then(() => {
-                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE, 
+                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE,
                     params.COSMOSDB_ROOT_DB, params.COSMOSDB_MASTERKEY);
                 return db.getTrigger(triggerID);
             })

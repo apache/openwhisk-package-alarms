@@ -49,7 +49,7 @@ server.listen(app.get('port'), function() {
 function createDatabase() {
   var Database = require('./lib/database');
   var db = new Database();
-  db.initDB(dbProtocol, dbUsername, dbPassword, dbHost, dbType, cosmosdbRootDatabase, 
+  db.initDB(dbProtocol, dbUsername, dbPassword, dbHost, dbType, cosmosdbRootDatabase,
     cosmosdbMasterKey)
   .then((res) => {
     return db.createDatabase(databaseName);
