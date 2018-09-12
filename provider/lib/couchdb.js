@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 var constants = require('./constants.js');
 
 var filterDDName = '_design/' + constants.FILTERS_DESIGN_DOC;
@@ -78,7 +78,7 @@ module.exports = function(dbURL) {
         });
     }
     else {
-        Promise.reject('nano provider did not get created.  check db URL: ' + dbHost);
+        Promise.reject('nano provider did not get created.  check db URL: ' + dbURL);
     }
     };
 
@@ -92,7 +92,6 @@ module.exports = function(dbURL) {
                     //new design doc
                     db.insert(designDoc, ddName, function (error, body) {
                         if (error && error.statusCode !== 409) {
-                            logger.error(method, error);
                             reject('design doc could not be created: ' + error);
                         }
                         else {
@@ -105,7 +104,7 @@ module.exports = function(dbURL) {
                 }
             });
         });
-    };
+    }
 
     this.createTrigger = function(triggerID, newTrigger) {
     return new Promise(function(resolve, reject) {
@@ -115,7 +114,7 @@ module.exports = function(dbURL) {
                 resolve();
             }
             else {
-                reject(common.sendError(err.statusCode, 'error creating alarm trigger.', err.message));
+                reject(err.statusCode + 'error creating alarm trigger.' + err.message);
             }
         });
     });
@@ -138,7 +137,7 @@ module.exports = function(dbURL) {
                         });
                     } else {
                         var name = '/' + qName[1] + '/' + qName[2];
-                        reject(common.sendError(err.statusCode, 'could not find trigger ' + name + ' in the database'));
+                        reject(err.statusCode + 'could not find trigger ' + name + ' in the database');
                     }
                 } else {
                     resolve(existing);
@@ -180,7 +179,7 @@ module.exports = function(dbURL) {
                         }, 1000);
                     }
                     else {
-                        reject(common.sendError(err.statusCode, 'there was an error while disabling the trigger in the database.', err.message));
+                        reject(err.statusCode + 'there was an error while disabling the trigger in the database.' + err.message);
                     }
                 }
                 else {
@@ -209,7 +208,7 @@ module.exports = function(dbURL) {
                                 }, 1000);
                             }
                             else {
-                                reject(common.sendError(err.statusCode, 'there was an error while deleting the trigger from the database.', err.message));
+                                reject(err.statusCode + 'there was an error while deleting the trigger from the database.' + err.message);
                             }
                         }
                         else {
@@ -220,7 +219,7 @@ module.exports = function(dbURL) {
                 else {
                     var qName = triggerID.split('/');
                     var name = '/' + qName[1] + '/' + qName[2];
-                    reject(common.sendError(err.statusCode, 'could not find trigger ' + name + ' in the database'));
+                    reject(err.statusCode + 'could not find trigger ' + name + ' in the database');
                 }
             });
         });
@@ -254,7 +253,7 @@ module.exports = function(dbURL) {
                         }, 1000);
                     }
                     else {
-                        reject(common.sendError(err.statusCode, 'there was an error while updating the trigger in the database.', err.message));
+                        reject(err.statusCode + 'there was an error while updating the trigger in the database.' + err.message);
                     }
                 }
                 else {

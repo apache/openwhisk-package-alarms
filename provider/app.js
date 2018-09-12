@@ -54,7 +54,7 @@ function createDatabase() {
   .then((res) => {
     return db.createDatabase(databaseName);
   })
-  .catch((err) throw new Error(err));
+  .catch((err) => {throw new Error(err); });
 }
 
 function createRedisClient() {

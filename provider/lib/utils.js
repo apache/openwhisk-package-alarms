@@ -240,7 +240,7 @@ module.exports = function(logger, triggerDB, redisClient) {
                     })
                     .catch((err) => {
                         logger.error(method, 'there was an error while disabling', triggerIdentifier, 'in database.', err);
-                    })
+                    });
 
                 }
 

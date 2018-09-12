@@ -7,34 +7,32 @@ module.exports = function() {
     // init for DB object - a thin, promise-loving wrapper around nano / documentdb
     this.initDB = function(dbURL, dbName, dbType, cosmosdbRootDatabase, cosmosdbMasterKey) {
 
-        var dbType = typeof dbType  !== 'undefined' ?  dbType  : "couchdb";
-
+        dbType = typeof dbType  !== 'undefined' ?  dbType  : "couchdb";
+        var db = {};
         return new Promise((resolve, reject) => {
-            
             if(dbType === "couchdb") {
                 console.log("using couchdb");
                 var couchdb = require('./couchdb');
-                var db = new couchdb(dbURL, dbName);
+                db = new couchdb(dbURL, dbName);
                 database.utilsDB = db;
                 resolve();
-            } 
+            }
             else if(dbType === "cosmosdb") {
                 console.log("using cosmosdb");
                 var cosmosdb = require('./cosmosdb');
-                var db = new cosmosdb(dbURL, cosmosdbMasterKey);
+                db = new cosmosdb(dbURL, cosmosdbMasterKey);
                 db.init(cosmosdbRootDatabase, dbName)
                     .then((res) => {
                         database.utilsDB = db;
                         resolve();
                     })
                     .catch((err) => {
-                        reject(err)});
+                        reject(err);});
             }
-            else  
+            else
                 reject("No db type to initialize");
         });
-    }
-    
+    };
 
     this.getWorkerID = function(availabeWorkers) {
         return database.utilsDB.getWorkerID(availabeWorkers);

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 module.exports = function(endpoint, masterKey) {
     var DocumentClient = require('documentdb').DocumentClient;
 
@@ -28,7 +28,7 @@ module.exports = function(endpoint, masterKey) {
             query: 'SELECT * FROM root r WHERE r.id = @id',
             parameters: [{ name: '@id', value: databaseName }]
         };
-        return new Promise((resolve, reject) => { 
+        return new Promise((resolve, reject) => {
         client.queryDatabases(querySpec).toArray((err, results) => {
             if(err) reject(err);
 
@@ -37,7 +37,7 @@ module.exports = function(endpoint, masterKey) {
             resolve();
         });
         });
-    }
+    };
 
     //get or create collection in cosmosdb terminology
     this.createDatabase = function(log, collectionName) {
@@ -50,8 +50,8 @@ module.exports = function(endpoint, masterKey) {
         };
         return new Promise((resolve, reject) => {
             client.queryCollections(utilsDB.dbLink, querySpec).toArray((err, results) => {
-            if (err) reject(err)
-              
+            if (err) reject(err);
+
             if (results.length === 0) {
                 createDB(collectionName)
                     .then((col) => {
@@ -92,11 +92,10 @@ module.exports = function(endpoint, masterKey) {
 
             client.createDocument(utilsDB.collectionLink, newTrigger, function(err, document) {
             if(err) reject(err);
-            
+
             console.log("created trigger " + triggerID);
             resolve();
         });
-            
         });
     };
 
@@ -108,8 +107,8 @@ module.exports = function(endpoint, masterKey) {
             };
 
             client.queryDocuments(utilsDB.collectionLink, querySpec).toArray(function(err, results) {
-            if (err) reject(err) 
-                
+            if (err) reject(err);
+
            if(results.length == 0)
                 resolve();
             else {
@@ -138,7 +137,6 @@ module.exports = function(endpoint, masterKey) {
 
         return new Promise(function(resolve, reject) {
 
-            
         });
 
     };
@@ -149,14 +147,13 @@ module.exports = function(endpoint, masterKey) {
             utilsDB.getTrigger(triggerID)
                 .then((doc) => {
                     client.deleteDocument(doc._self, function(err) {
-                    if (err) reject(err)
+                    if (err) reject(err);
 
                     console.log("Deleted Trigger " + triggerID);
-                    resolve()
+                    resolve();
                     });
                 })
-                .catch((err) => { reject(err)})
-           
+                .catch((err) => { reject(err);});
         });
     };
 
@@ -176,14 +173,13 @@ module.exports = function(endpoint, masterKey) {
             utilsDB.getTrigger(triggerID)
                 .then((doc) => {
                     client.replaceDocument(doc._self, trigger, function(err, replaced) {
-                    if (err) reject(err)
+                    if (err) reject(err);
 
                     console.log("Updated Trigger " + triggerID);
-                    resolve(replaced)
+                    resolve(replaced);
                     });
                 })
-                .catch((err) => { reject(err)})
+                .catch((err) => { reject(err);});
         });
     };
-
 };

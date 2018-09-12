@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 module.exports = function(endpoint, masterKey) {
     var DocumentClient = require('documentdb').DocumentClient;
 
@@ -28,7 +28,7 @@ module.exports = function(endpoint, masterKey) {
             query: 'SELECT * FROM root r WHERE r.id = @id',
             parameters: [{ name: '@id', value: databaseName }]
         };
-        return new Promise((resolve, reject) => { 
+        return new Promise((resolve, reject) => {
         client.queryDatabases(querySpec).toArray((err, results) => {
             if(err) reject(err);
 
@@ -39,10 +39,10 @@ module.exports = function(endpoint, masterKey) {
                     console.log("got database");
                     resolve();
                 })
-                .catch((err) => { reject(err)})
+                .catch((err) => { reject(err);});
         });
         });
-    }
+    };
 
     //get collection in cosmosdb terminology
     this.getDatabase = function(collectionName) {
@@ -52,8 +52,8 @@ module.exports = function(endpoint, masterKey) {
         };
         return new Promise((resolve, reject) => {
             client.queryCollections(utilsDB.dbLink, querySpec).toArray((err, results) => {
-            if (err) reject(err)
-              
+            if (err) reject(err);
+
             if (results.length === 0) {
                 console.log("No valid collection. Create One");
                 utilsDB.createDatabase(collectionName)
@@ -69,7 +69,7 @@ module.exports = function(endpoint, masterKey) {
             }
             });
         });
-    }
+    };
 
     //create collection in cosmosdb terminology
     this.createDatabase = function(collectionName) {
@@ -83,7 +83,7 @@ module.exports = function(endpoint, masterKey) {
                 resolve(collection);
             });
         });
-    }
+    };
 
     this.getWorkerID = function(availabeWorkers) {
 
@@ -102,11 +102,10 @@ module.exports = function(endpoint, masterKey) {
 
             client.createDocument(utilsDB.collectionLink, newTrigger, function(err, document) {
             if(err) reject(err);
-            
+
             console.log("created trigger " + triggerID);
             resolve();
         });
-            
         });
     };
 
@@ -118,7 +117,7 @@ module.exports = function(endpoint, masterKey) {
             };
 
             client.queryDocuments(utilsDB.collectionLink, querySpec).toArray(function(err, results) {
-            if (err) reject(err) 
+            if (err) reject(err);
 
                if(results.length == 0)
                     resolve();
@@ -127,42 +126,6 @@ module.exports = function(endpoint, masterKey) {
                     resolve(results[0]);
                 }
             });
-        });
-    };
-
-    this.disableTrigger = function(triggerID, trigger, retryCount, crudMessage) {
-        if (retryCount === 0) {
-            //check if it is already disabled
-            if (trigger.status && trigger.status.active === false) {
-                return Promise.resolve(triggerID);
-            }
-
-            var message = `Automatically disabled trigger while ${crudMessage}`;
-            var status = {
-                'active': false,
-                'dateChanged': Date.now(),
-                'reason': {'kind': 'AUTO', 'statusCode': undefined, 'message': message}
-            };
-            trigger.status = status;
-        }
-
-        return updateTrigger(triggerID, trigger);
-    };
-
-    this.deleteTrigger = function(triggerID) {
-
-        return new Promise(function(resolve, reject) {
-            utilsDB.getTrigger(triggerID)
-                .then((doc) => {
-                    client.deleteDocument(doc._self, function(err) {
-                    if (err) reject(err)
-
-                    console.log("Deleted Trigger " + triggerID);
-                    resolve()
-                    });
-                })
-                .catch((err) => { reject(err)})
-           
         });
     };
 
@@ -182,14 +145,48 @@ module.exports = function(endpoint, masterKey) {
             utilsDB.getTrigger(triggerID)
                 .then((doc) => {
                     client.replaceDocument(doc._self, trigger, function(err, replaced) {
-                    if (err) reject(err)
+                    if (err) reject(err);
 
                     console.log("Updated Trigger " + triggerID);
-                    resolve(replaced)
+                    resolve(replaced);
                     });
                 })
-                .catch((err) => { reject(err)})
+                .catch((err) => { reject(err);});
         });
     };
 
+    this.disableTrigger = function(triggerID, trigger, retryCount, crudMessage) {
+        if (retryCount === 0) {
+            //check if it is already disabled
+            if (trigger.status && trigger.status.active === false) {
+                return Promise.resolve(triggerID);
+            }
+
+            var message = `Automatically disabled trigger while ${crudMessage}`;
+            var status = {
+                'active': false,
+                'dateChanged': Date.now(),
+                'reason': {'kind': 'AUTO', 'statusCode': undefined, 'message': message}
+            };
+            trigger.status = status;
+        }
+
+        return utilsDB.updateTrigger(triggerID, trigger);
+    };
+
+    this.deleteTrigger = function(triggerID) {
+
+        return new Promise(function(resolve, reject) {
+            utilsDB.getTrigger(triggerID)
+                .then((doc) => {
+                    client.deleteDocument(doc._self, function(err) {
+                    if (err) reject(err);
+
+                    console.log("Deleted Trigger " + triggerID);
+                    resolve();
+                    });
+                })
+                .catch((err) => { reject(err);});
+        });
+    };
 };

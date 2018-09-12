@@ -379,7 +379,7 @@ function getDatabase(dbURL, dbName, dbType, cosmosdbRootDatabase, cosmosdbMaster
     })
     .catch((err) => {
         throw new Error(err);
-    })
+    });
 }
 
 exports.main = main;
