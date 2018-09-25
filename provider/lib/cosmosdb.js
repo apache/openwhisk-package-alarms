@@ -182,4 +182,25 @@ module.exports = function(endpoint, masterKey) {
                 .catch((err) => { reject(err);});
         });
     };
+
+    this.getTriggerByWorkers = function(viewDDName, triggersByWorker, worker) {
+        return new Promise(function(resolve, reject) {
+
+            let querySpec = {
+                query: 'SELECT * FROM root r WHERE CONTAINS(r.worker, @worker)',
+                parameters: [{ name: '@worker', value: worker }]
+            };
+
+            client.queryDocuments(utilsDB.collectionLink, querySpec).toArray(function(err, results) {
+            if (err) reject(err);
+
+           if(results.length == 0)
+                resolve();
+            else {
+                console.log("Found Triggers for worker " + wroker);
+                resolve(results);
+            }
+            });
+        });
+    };
 };

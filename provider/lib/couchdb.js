@@ -262,4 +262,15 @@ module.exports = function(dbURL) {
             });
         });
     };
+
+    this.getTriggerByWorkers = function(viewDDName, triggersByWorker, worker) {
+        return new Promise(function(resolve, reject) {
+            utilsDB.db.view(viewDDName, triggersByWorker, {reduce: false, include_docs: true, key: worker}, function(err, body) {
+                if (err)
+                    reject(err.statusCode + ' could not get latest state from database ');
+                else
+                    resolve(body.rows);
+            });
+        });
+    };
 };

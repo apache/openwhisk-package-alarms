@@ -274,10 +274,10 @@ module.exports = function(logger, triggerDB, redisClient) {
         setupFollow('now');
 
         logger.info(method, 'resetting system from last state');
-        //TODO understand trigger views
-        triggerDB.view(viewDDName, triggersByWorker, {reduce: false, include_docs: true, key: self.worker}, function(err, body) {
-            if (!err) {
-                body.rows.forEach(function (trigger) {
+
+        triggerDB.getTriggerByWorkers(viewDDName, triggersByWorker, self.worker)
+            .then((res) => {
+                res.forEach(function (trigger) {
                     var triggerIdentifier = trigger.id;
                     var doc = trigger.doc;
 
@@ -321,15 +321,14 @@ module.exports = function(logger, triggerDB, redisClient) {
                         });
                     }
                 });
-            } else {
+            })
+            .catch((err) => {
                 logger.error(method, 'could not get latest state from database', err);
-            }
-        });
+            });
     };
 
     function setupFollow(seq) {
         var method = 'setupFollow';
-        //TODO check worker mechanism
         try {
             var feed = triggerDB.follow({
                 since: seq,
