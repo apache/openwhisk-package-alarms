@@ -197,7 +197,7 @@ module.exports = function(endpoint, masterKey) {
            if(results.length == 0)
                 resolve();
             else {
-                console.log("Found Triggers for worker " + wroker);
+                console.log("Found Triggers for worker " + worker);
                 resolve(results);
             }
             });
