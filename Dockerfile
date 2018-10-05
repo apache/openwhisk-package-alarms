@@ -12,7 +12,7 @@ RUN apt-get update --fix-missing && \
   apt-get update && \
   apt-get remove -y nodejs && \
   curl -sL https://deb.nodesource.com/setup_8.x -o setup_8.x && \ 
-  echo "${NODE_SETUP_DOWNLOAD_SHA} setup_8.x" | sha256sum -c - && \
+  echo "${NODE_SETUP_DOWNLOAD_SHA}  setup_8.x" | sha256sum -c - && \
   cat setup_8.x | bash - && \
   rm setup_8.x && \
   apt-get install -y nodejs
