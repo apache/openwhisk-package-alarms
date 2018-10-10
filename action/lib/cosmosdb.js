@@ -88,7 +88,8 @@ module.exports = function(endpoint, masterKey) {
     this.getWorkerID = function(availabeWorkers) {
 
         return new Promise((resolve, reject) => {
-            //TODO need to get details how worker ID is assigned
+            var workerID = availabeWorkers[0] || 'worker0';
+            resolve(workerID);
         });
     };
 

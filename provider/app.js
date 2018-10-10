@@ -32,9 +32,9 @@ var dbPassword = process.env.DB_PASSWORD;
 var dbHost = process.env.DB_HOST;
 var dbProtocol = process.env.DB_PROTOCOL;
 var dbPrefix = process.env.DB_PREFIX;
-var dbType = process.env.DB_TYPE;
-var cosmosdbRootDatabase = process.env.COSMOS_ROOT_DB;
-var cosmosdbMasterKey = process.env.COSMOS_MASTER_KEY;
+var dbType = process.env.DB_TYPE; //one of couchdb | cosmosdb. Defaults to couchdb if not provided
+var cosmosdbRootDatabase = process.env.COSMOSDB_ROOT_DB;
+var cosmosdbMasterKey = process.env.COSMOSDB_MASTER_KEY;
 var databaseName = dbPrefix + constants.TRIGGER_DB_SUFFIX;
 var redisUrl = process.env.REDIS_URL;
 var monitoringAuth = process.env.MONITORING_AUTH;
@@ -47,14 +47,24 @@ server.listen(app.get('port'), function() {
 });
 
 function createDatabase() {
-  var Database = require('./lib/database');
-  var db = new Database();
-  db.initDB(dbProtocol, dbUsername, dbPassword, dbHost, dbType, cosmosdbRootDatabase,
-    cosmosdbMasterKey)
-  .then((res) => {
-    return db.createDatabase(databaseName);
-  })
-  .catch((err) => {throw new Error(err); });
+    return new Promise(function(resolve, reject) {
+        var Database = require('./lib/database');
+          var db = new Database();
+          db.initDB(dbProtocol, dbUsername, dbPassword, dbHost, dbType, cosmosdbRootDatabase,
+            cosmosdbMasterKey)
+            .then((res) => {
+               db.createDatabase(logger, databaseName)
+                .then((triggerDB) => {
+                    resolve(triggerDB);
+                })
+                .catch((err) => {
+                    reject(err);
+                });
+            })
+            .catch((err) => {
+                reject(err);
+            });
+    });
 }
 
 function createRedisClient() {
@@ -106,9 +116,9 @@ function init(server) {
         }
     }
 
-    createDatabase()
+    nanoDb = createDatabase()
     .then(db => {
-        nanoDb = db;
+    nanoDb = db;
         return createRedisClient();
     })
     .then(client => {

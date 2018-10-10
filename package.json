@@ -20,7 +20,7 @@
     "bluebird": "^3.5.0",
     "systeminformation": "^3.19.0",
     "long-timeout": "^0.1.1",
-    "documentdb": "^1.14.5",
+    "documentdb": "^1.14.5"
 
   }
 }

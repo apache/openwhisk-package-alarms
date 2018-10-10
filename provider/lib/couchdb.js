@@ -25,13 +25,19 @@ module.exports = function(dbURL) {
     var utilsDB = this;
     this.nano = nano;
 
+    this.getPrefix = function() {
+        if(utilsDB.nano)
+            return utilsDB.nano.config.db;
+
+        return "alarmservice";
+    };
+
     this.createDatabase = function(logger, databaseName) {
     var method = 'createDatabase';
     logger.info(method, 'creating the trigger database');
 
-
+    return new Promise(function (resolve, reject) {
     if (utilsDB.nano !== null) {
-        return new Promise(function (resolve, reject) {
             utilsDB.nano.db.create(databaseName, function (err, body) {
                 if (!err) {
                     logger.info(method, 'created trigger database:', databaseName);
@@ -53,7 +59,7 @@ module.exports = function(dbURL) {
                     }
                 };
 
-                createDesignDoc(utilsDB.nano.db.use(databaseName), viewDDName, viewDD)
+                createDesignDoc(nano.db.use(databaseName), viewDDName, viewDD)
                 .then((db) => {
                     var filterDD = {
                         filters: {
@@ -67,19 +73,20 @@ module.exports = function(dbURL) {
                     return createDesignDoc(db, filterDDName, filterDD);
                 })
                 .then((db) => {
-                    utilsDB.db = db;
-                    resolve(utilsDB);
+                  utilsDB.nano = db;
+                  resolve(utilsDB);
                 })
-                .catch(err => {
+                .catch((err) => {
                     reject(err);
                 });
 
             });
-        });
     }
     else {
-        Promise.reject('nano provider did not get created.  check db URL: ' + dbURL);
+        console.log(" check db URL");
+        reject('nano provider did not get created.  check db URL: ' + dbURL);
     }
+    });
     };
 
     function createDesignDoc(db, ddName, designDoc) {
@@ -109,7 +116,7 @@ module.exports = function(dbURL) {
     this.createTrigger = function(triggerID, newTrigger) {
     return new Promise(function(resolve, reject) {
 
-        utilsDB.db.insert(newTrigger, triggerID, function (err) {
+        utilsDB.nano.insert(newTrigger, triggerID, function (err) {
             if (!err) {
                 resolve();
             }
@@ -125,7 +132,7 @@ module.exports = function(dbURL) {
 
             var qName = triggerID.split('/');
             var id = retry ? triggerID : qName[0] + '/_/' + qName[2];
-            utilsDB.db.get(id, function (err, existing) {
+            utilsDB.nano.get(id, function (err, existing) {
                 if (err) {
                     if (retry) {
                         utilsDB.getTrigger(triggerID, false)
@@ -165,7 +172,7 @@ module.exports = function(dbURL) {
 
         return new Promise(function(resolve, reject) {
 
-            utilsDB.db.insert(trigger, triggerID, function (err) {
+            utilsDB.nano.insert(trigger, triggerID, function (err) {
                 if (err) {
                     if (err.statusCode === 409 && retryCount < 5) {
                         setTimeout(function () {
@@ -194,9 +201,9 @@ module.exports = function(dbURL) {
 
         return new Promise(function(resolve, reject) {
 
-            utilsDB.db.get(triggerID, function (err, existing) {
+            utilsDB.nano.get(triggerID, function (err, existing) {
                 if (!err) {
-                    utilsDB.db.destroy(existing._id, existing._rev, function (err) {
+                    utilsDB.nano.destroy(existing._id, existing._rev, function (err) {
                         if (err) {
                             if (err.statusCode === 409 && retryCount < 5) {
                                 setTimeout(function () {
@@ -239,7 +246,7 @@ module.exports = function(dbURL) {
         }
 
         return new Promise(function(resolve, reject) {
-            utilsDB.db.insert(trigger, triggerID, function (err) {
+            utilsDB.nano.insert(trigger, triggerID, function (err) {
                 if (err) {
                     if (err.statusCode === 409 && retryCount < 5) {
                         setTimeout(function () {
@@ -265,12 +272,16 @@ module.exports = function(dbURL) {
 
     this.getTriggerByWorkers = function(viewDDName, triggersByWorker, worker) {
         return new Promise(function(resolve, reject) {
-            utilsDB.db.view(viewDDName, triggersByWorker, {reduce: false, include_docs: true, key: worker}, function(err, body) {
+            utilsDB.nano.view(viewDDName, triggersByWorker, {reduce: false, include_docs: true, key: worker}, function(err, body) {
                 if (err)
                     reject(err.statusCode + ' could not get latest state from database ');
                 else
                     resolve(body.rows);
             });
         });
+    };
+
+    this.follow = function(config) {
+        return utilsDB.nano.follow(config);
     };
 };

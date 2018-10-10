@@ -3,8 +3,8 @@ const moment = require('moment');
 const common = require('./lib/common');
 const Database = require('./lib/Database');
 
-function main(params) {
 
+function main(params) {
     if (!params.triggerName) {
         return common.sendError(400, 'no trigger name parameter was provided');
     }
@@ -131,8 +131,7 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE,
-                    params.COSMOSDB_ROOT_DB, params.COSMOSDB_MASTERKEY);
+                db = getDatabase(getDBConfig(params));
                 return db.getWorkerID(workers);
             })
             .then((worker) => {
@@ -157,8 +156,7 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE,
-                    params.COSMOSDB_ROOT_DB, params.COSMOSDB_MASTERKEY);
+                db = getDatabase(getDBConfig(params));
                 return db.getTrigger(triggerID);
             })
             .then(doc => {
@@ -207,8 +205,7 @@ function main(params) {
 
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE,
-                    params.COSMOSDB_ROOT_DB, params.COSMOSDB_MASTERKEY);
+                db = getDatabase(getDBConfig(params));
                 return db.getTrigger(triggerID);
             })
             .then(trigger => {
@@ -318,8 +315,7 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, true)
             .then(() => {
-                db = getDatabase(params.DB_URL, params.DB_NAME, params.DB_TYPE,
-                    params.COSMOSDB_ROOT_DB, params.COSMOSDB_MASTERKEY);
+                db = getDatabase(getDBConfig(params));
                 return db.getTrigger(triggerID);
             })
             .then(trigger => {
@@ -370,9 +366,9 @@ function hasSecondsGranularity(cron) {
     return fields.length > 5 && fields[fields.length - 6] !== '0';
 }
 
-function getDatabase(dbURL, dbName, dbType, cosmosdbRootDatabase, cosmosdbMasterKey) {
+function getDatabase(config) {
     var db = new Database();
-    db.initDB(dbURL, dbName, dbType, cosmosdbRootDatabase, cosmosdbMasterKey)
+    db.initDB(config)
     .then((res) =>
     {
         return db;
@@ -380,6 +376,20 @@ function getDatabase(dbURL, dbName, dbType, cosmosdbRootDatabase, cosmosdbMaster
     .catch((err) => {
         throw new Error(err);
     });
+}
+
+function getDBConfig(params) {
+    var config = {};
+    if(params) {
+        config = {
+            dburl: params.DB_URL,
+            dbname: params.DB_NAME,
+            type: params.DB_TYPE,
+            masterkey: params.COSMOSDB_MASTERKEY,
+            rootdb: params.COSMOSDB_ROOT_DB
+        };
+    }
+    return config;
 }
 
 exports.main = main;

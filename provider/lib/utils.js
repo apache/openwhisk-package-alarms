@@ -15,7 +15,7 @@ module.exports = function(logger, triggerDB, redisClient) {
     var filterDDName = constants.FILTERS_DESIGN_DOC;
     var viewDDName = constants.VIEWS_DESIGN_DOC;
     var triggersByWorker = constants.TRIGGERS_BY_WORKER;
-    var redisKeyPrefix = process.env.REDIS_KEY_PREFIX || triggerDB.config.db;
+    var redisKeyPrefix = process.env.REDIS_KEY_PREFIX || triggerDB.getPrefix();
     var self = this;
 
     this.triggers = {};
