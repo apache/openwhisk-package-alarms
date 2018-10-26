@@ -40,7 +40,6 @@ function main(params) {
                 'dateChanged': Date.now()
             }
         };
-        Object.assign(newTrigger, triggerData);
 
         if (params.fireOnce) {
             if (!params.date) {
@@ -138,6 +137,7 @@ function main(params) {
             .then((worker) => {
                 console.log('trigger will be assigned to worker ' + worker);
                 newTrigger.worker = worker;
+                Object.assign(newTrigger, triggerData);
                 return db.createTrigger(triggerID, newTrigger);
             })
             .then(() => {
