@@ -1,5 +1,16 @@
+// Licensed to the Apache Software Foundation (ASF) under one or more contributor
+// license agreements; and to You under the Apache License, Version 2.0.
+
 function getOpenWhiskConfig(triggerData) {
     return {ignore_certs: true, namespace: triggerData.namespace, api_key: triggerData.apikey};
+}
+
+function constructTriggerID(triggerData) {
+    var triggerID = `${triggerData.namespace}/${triggerData.name}`;
+    if (triggerData.apikey) {
+        triggerID = `${triggerData.apikey}/${triggerID}`;
+    }
+    return triggerID;
 }
 
 function addAdditionalData(params) {
@@ -9,5 +20,6 @@ function addAdditionalData(params) {
 
 module.exports = {
     'addAdditionalData': addAdditionalData,
-    'getOpenWhiskConfig': getOpenWhiskConfig
+    'getOpenWhiskConfig': getOpenWhiskConfig,
+    'constructTriggerID': constructTriggerID
 };

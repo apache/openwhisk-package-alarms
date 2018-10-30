@@ -1,3 +1,6 @@
+// Licensed to the Apache Software Foundation (ASF) under one or more contributor
+// license agreements; and to You under the Apache License, Version 2.0.
+
 const request = require('request');
 const openwhisk = require('openwhisk');
 const config = require('./config');
@@ -47,6 +50,7 @@ function createWebParams(rawParams) {
     delete webparams.apihost;
 
     webparams.triggerName = triggerName;
+    webparams.authKey = process.env.__OW_API_KEY;
     config.addAdditionalData(webparams);
 
     return webparams;

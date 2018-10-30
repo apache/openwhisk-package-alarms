@@ -1,7 +1,11 @@
+// Licensed to the Apache Software Foundation (ASF) under one or more contributor
+// license agreements; and to You under the Apache License, Version 2.0.
+
 const CronJob = require('cron').CronJob;
 const moment = require('moment');
 const common = require('./lib/common');
 const Database = require('./lib/Database');
+const config = require('./lib/config');
 
 
 function main(params) {
@@ -16,10 +20,7 @@ function main(params) {
         namespace: triggerParts.namespace,
         additionalData: common.constructObject(params.additionalData),
     };
-    var triggerID = `${triggerData.namespace}/${triggerData.name}`;
-    if (triggerData.apikey) {
-        triggerID = `${triggerData.apikey}/${triggerID}`;
-    }
+    var triggerID = config.constructTriggerID(triggerData);
 
     var workers = params.workers instanceof Array ? params.workers : [];
     var deleteAfterFireArray = ['false', 'true', 'rules'];
@@ -39,7 +40,6 @@ function main(params) {
                 'dateChanged': Date.now()
             }
         };
-        Object.assign(newTrigger, triggerData);
 
         if (params.fireOnce) {
             if (!params.date) {
@@ -137,6 +137,7 @@ function main(params) {
             .then((worker) => {
                 console.log('trigger will be assigned to worker ' + worker);
                 newTrigger.worker = worker;
+                Object.assign(newTrigger, triggerData);
                 return db.createTrigger(triggerID, newTrigger);
             })
             .then(() => {
