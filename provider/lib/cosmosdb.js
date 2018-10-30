@@ -30,7 +30,9 @@ module.exports = function(endpoint, masterKey) {
         };
         return new Promise((resolve, reject) => {
         client.queryDatabases(querySpec).toArray((err, results) => {
-            if(err) reject(err);
+            if(err){
+                reject(err);
+            }
 
             console.log("cosmosdb client initialized successfully");
             utilsDB.dbLink = results[0]._self;
@@ -50,17 +52,21 @@ module.exports = function(endpoint, masterKey) {
         };
         return new Promise((resolve, reject) => {
             client.queryCollections(utilsDB.dbLink, querySpec).toArray((err, results) => {
-            if (err) reject(err);
-
+            if (err) {
+                reject(err);
+            }
             if (results.length === 0) {
+                logger.info(method, "No Trigger database found. Creating one.");
                 createDB(collectionName)
                     .then((col) => {
+                        logger.info(method, "created trigger database.");
                         utilsDB.collectionLink = col._self;
                         resolve(utilsDB);
                     })
                     .catch((err) => reject(err));
             } else {
                 utilsDB.collectionLink = results[0]._self;
+                utilsDB.prefix = results[0].id;
                 resolve(utilsDB);
             }
             });
@@ -169,6 +175,10 @@ module.exports = function(endpoint, masterKey) {
             trigger.status = status;
         }
 
+        if(!trigger.id) {
+            trigger.id = triggerID;
+        }
+
         return new Promise(function(resolve, reject) {
             utilsDB.getTrigger(triggerID)
                 .then((doc) => {
@@ -202,5 +212,12 @@ module.exports = function(endpoint, masterKey) {
             }
             });
         });
+    };
+
+    this.getPrefix = function() {
+        if(utilsDB.prefix)
+            return utilsDB.prefix;
+
+        return "alarmservice";
     };
 };

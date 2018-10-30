@@ -50,8 +50,7 @@ function createDatabase() {
     return new Promise(function(resolve, reject) {
         var Database = require('./lib/database');
           var db = new Database();
-          db.initDB(dbProtocol, dbUsername, dbPassword, dbHost, dbType, cosmosdbRootDatabase,
-            cosmosdbMasterKey)
+          db.initDB(getDBConfig())
             .then((res) => {
                db.createDatabase(logger, databaseName)
                 .then((triggerDB) => {
@@ -151,6 +150,20 @@ function init(server) {
         logger.error(method, 'an error occurred creating database:', err);
     });
 
+}
+
+function getDBConfig() {
+    var config = {};
+    config = {
+        protocol: dbProtocol
+        host: dbHost,
+        username: databaseName,
+        password: dbPassword,
+        type: dbType,
+        masterkey: cosmosdbMasterKey,
+        rootdb: cosmosdbRootDatabase
+    };
+    return config;
 }
 
 init(server);

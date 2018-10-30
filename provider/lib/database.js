@@ -20,25 +20,25 @@ module.exports = function() {
     var database = this;
 
     // init for DB object - a thin, promise-loving wrapper around nano / documentdb
-    this.initDB = function(dbProtocol, dbUsername, dbPassword, dbHost, dbType, cosmosdbRootDatabase, cosmosdbMasterKey) {
+    this.initDB = function(config) {
 
-        dbType = typeof dbType  !== 'undefined' ?  dbType  : "couchdb";
+        config.type = typeof config.type  !== 'undefined' ?  config.type  : "couchdb";
         var db = {};
         return new Promise((resolve, reject) => {
 
-            if(dbType === "couchdb") {
+            if(config.type === "couchdb") {
                 console.log("using couchdb");
                 var couchdb = require('./couchdb');
-                var dbURL = dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost;
+                var dbURL = config.protocol + '://' + config.username + ':' + config.password + '@' + config.host;
                 db = new couchdb(dbURL);
                 database.utilsDB = db;
                 resolve();
             }
-            else if(dbType === "cosmosdb") {
+            else if(config.type === "cosmosdb") {
                 console.log("using cosmosdb");
                 var cosmosdb = require('./cosmosdb');
-                db = new cosmosdb(dbHost, cosmosdbMasterKey);
-                db.init(cosmosdbRootDatabase)
+                db = new cosmosdb(config.host, config.masterkey);
+                db.init(config.rootdb)
                     .then((res) => {
                         database.utilsDB = db;
                         resolve();
