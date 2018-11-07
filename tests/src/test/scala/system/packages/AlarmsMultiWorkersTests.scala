@@ -26,9 +26,9 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.{FlatSpec, Matchers}
 import spray.json.DefaultJsonProtocol._
 import spray.json._
-import whisk.core.WhiskConfig
-import whisk.core.database.test.ExtendedCouchDbRestClient
-import whisk.utils.{JsHelpers, retry}
+import org.apache.openwhisk.core.WhiskConfig
+import org.apache.openwhisk.core.database.test.ExtendedCouchDbRestClient
+import org.apache.openwhisk.utils.{JsHelpers, retry}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
