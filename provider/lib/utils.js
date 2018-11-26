@@ -156,7 +156,7 @@ module.exports = function(logger, triggerDB, redisClient) {
 
     function shouldDisableTrigger(statusCode) {
         return ((statusCode >= 400 && statusCode < 500) &&
-            [HttpStatus.REQUEST_TIMEOUT, HttpStatus.TOO_MANY_REQUESTS].indexOf(statusCode) === -1);
+            [HttpStatus.REQUEST_TIMEOUT, HttpStatus.TOO_MANY_REQUESTS, HttpStatus.CONFLICT].indexOf(statusCode) === -1);
     }
 
     function shouldFireTrigger(trigger) {
