@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+const common = require('./common');
 
 module.exports = function(endpoint, masterKey) {
     var DocumentClient = require('documentdb').DocumentClient;
@@ -110,7 +111,7 @@ module.exports = function(endpoint, masterKey) {
         });
     };
 
-    this.getTrigger = function(triggerID) {
+    this.getTrigger = function(triggerID, retry = true) {
         return new Promise(function(resolve, reject) {
             let querySpec = {
                 query: 'SELECT * FROM root r WHERE r.id = @id',
@@ -118,7 +119,19 @@ module.exports = function(endpoint, masterKey) {
             };
 
             client.queryDocuments(utilsDB.collectionLink, querySpec).toArray(function(err, results) {
-            if (err) reject(err);
+            if (err) {
+                if (retry) {
+                    utilsDB.getTrigger(triggerID, false)
+                    .then(doc => {
+                        resolve(doc);
+                    })
+                    .catch(err => {
+                        reject(err);
+                    });
+                } else {
+                    reject(common.sendError(err.statusCode, 'could not find trigger ' + triggerID + ' in the database'));
+                }
+            }
 
                if(results.length == 0)
                     resolve();
@@ -146,7 +159,22 @@ module.exports = function(endpoint, masterKey) {
             utilsDB.getTrigger(triggerID)
                 .then((doc) => {
                     client.replaceDocument(doc._self, trigger, function(err, replaced) {
-                    if (err) reject(err);
+                    if (err) {
+                        if (err.statusCode === 409 && retryCount < 5) {
+                        setTimeout(function () {
+                            utilsDB.updateTrigger(triggerID, trigger, params, (retryCount + 1))
+                            .then(id => {
+                                resolve(id);
+                            })
+                            .catch(err => {
+                                reject(err);
+                            });
+                        }, 1000);
+                        }
+                        else {
+                            reject(common.sendError(err.statusCode, 'there was an error while updating the trigger in the database.', err.message));
+                        }
+                    }
 
                     console.log("Updated Trigger " + triggerID);
                     resolve(replaced);
@@ -172,7 +200,7 @@ module.exports = function(endpoint, masterKey) {
             trigger.status = status;
         }
 
-        return utilsDB.updateTrigger(triggerID, trigger);
+        return utilsDB.updateTrigger(triggerID, trigger, {}, retryCount);
     };
 
     this.deleteTrigger = function(triggerID) {

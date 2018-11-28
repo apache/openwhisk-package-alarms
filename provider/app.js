@@ -158,7 +158,7 @@ function init(server) {
 function getDBConfig() {
     var config = {};
     config = {
-        protocol: dbProtocol
+        protocol: dbProtocol,
         host: dbHost,
         username: databaseName,
         password: dbPassword,
