@@ -510,7 +510,7 @@ module.exports = function(logger, triggerDB, redisClient) {
         })
         .catch(err => {
             logger.error(method, err);
-            request(options, cb);
+            cb(err);
         });
     };
 
