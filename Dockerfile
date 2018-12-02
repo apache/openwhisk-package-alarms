@@ -1,4 +1,4 @@
-FROM node:8.12.0
+FROM node:8.14.0
 
 # only package.json
 ADD package.json /

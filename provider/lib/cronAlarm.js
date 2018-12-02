@@ -15,9 +15,11 @@ module.exports = function(logger, newTrigger) {
         namespace: newTrigger.namespace,
         payload: newTrigger.payload,
         cron: newTrigger.cron,
+        timezone: newTrigger.timezone,
         triggerID: newTrigger.triggerID,
         uri: newTrigger.uri,
-        monitor: newTrigger.monitor
+        monitor: newTrigger.monitor,
+        additionalData: newTrigger.additionalData
     };
 
     this.scheduleAlarm = function(triggerIdentifier, callback) {
@@ -26,7 +28,7 @@ module.exports = function(logger, newTrigger) {
         try {
             return new Promise(function(resolve, reject) {
 
-                var cronHandle = new CronJob(newTrigger.cron, callback);
+                var cronHandle = new CronJob(newTrigger.cron, callback, undefined, false, newTrigger.timezone);
 
                 if (newTrigger.stopDate) {
                     cachedTrigger.stopDate = newTrigger.stopDate;

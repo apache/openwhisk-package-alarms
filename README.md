@@ -105,6 +105,8 @@ For more information, see: http://crontab.org. The following strings are example
 
 - `trigger_payload` (*optional*): The value of this parameter becomes the content of the Trigger every time the Trigger is fired.
 
+- `timezone` (*optional*): This will modify the actual time relative to the specified timezone. If the timezone is invalid, an error is thrown. You can check all timezones available at the Moment Timezone Website (http://momentjs.com/timezone/docs/#/data-loading/getting-zone-names/).
+
 - `startDate` (*optional*): The date when the Trigger will start running. The Trigger fires based on the schedule specified by the cron parameter.
 
 - `stopDate` (*optional*): The date when the Trigger will stop running. Triggers are no longer fired once this date is reached.
