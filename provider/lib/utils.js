@@ -100,11 +100,18 @@ module.exports = function(logger, triggerDB, redisClient) {
                 json: triggerData.payload
             }, function(error, response) {
                 try {
+                    var statusCode;
+                    if (!error) {
+                        statusCode = response.statusCode;
+                    }
+                    else if (error.statusCode) {
+                        statusCode = error.statusCode;
+                    }
                     var triggerIdentifier = triggerData.triggerID;
-                    logger.info(method, triggerIdentifier, 'http post request, STATUS:', response ? response.statusCode : undefined);
+                    logger.info(method, triggerIdentifier, 'http post request, STATUS:', statusCode);
 
-                    if (error || response.statusCode >= 400) {
-                        logger.error(method, 'there was an error invoking', triggerIdentifier, response ? response.statusCode : error);
+                    if (error || statusCode >= 400) {
+                        logger.error(method, 'there was an error invoking', triggerIdentifier, statusCode || error);
                         var throttleCounter = throttleCount || 0;
 
                         // only manage trigger fires if they are not infinite
@@ -112,15 +119,15 @@ module.exports = function(logger, triggerDB, redisClient) {
                             triggerData.triggersLeft++;
                         }
 
-                        if (!error && shouldDisableTrigger(response.statusCode)) {
+                        if (!error && shouldDisableTrigger(statusCode)) {
                             //disable trigger
-                            var message = 'Automatically disabled after receiving a ' + response.statusCode + ' status code when firing the trigger';
-                            disableTrigger(triggerIdentifier, response.statusCode, message);
-                            reject('Disabled trigger ' + triggerIdentifier + ' due to status code: ' + response.statusCode);
+                            var message = 'Automatically disabled after receiving a ' + statusCode + ' status code when firing the trigger';
+                            disableTrigger(triggerIdentifier, statusCode, message);
+                            reject('Disabled trigger ' + triggerIdentifier + ' due to status code: ' + statusCode);
                         }
                         else {
                             if (retryCount < retryAttempts) {
-                                throttleCounter = response && response.statusCode === HttpStatus.TOO_MANY_REQUESTS ? throttleCounter + 1 : throttleCounter;
+                                throttleCounter = statusCode === HttpStatus.TOO_MANY_REQUESTS ? throttleCounter + 1 : throttleCounter;
                                 logger.info(method, 'attempting to fire trigger again', triggerIdentifier, 'Retry Count:', (retryCount + 1));
                                 setTimeout(function () {
                                     postTrigger(triggerData, (retryCount + 1), throttleCounter)
@@ -289,8 +296,7 @@ module.exports = function(logger, triggerDB, redisClient) {
                         var uri = self.uriHost + '/api/v1/namespaces/' + namespace + '/triggers/' + name;
 
                         logger.info(method, 'Checking if trigger', triggerIdentifier, 'still exists');
-                        var cachedTrigger = self.triggers[triggerIdentifier] = {apikey: doc.apikey, additionalData: doc.additionalData};
-                        self.authRequest(cachedTrigger, {
+                        self.authRequest(doc, {
                             method: 'get',
                             url: uri
                         }, function (error, response) {
@@ -302,8 +308,8 @@ module.exports = function(logger, triggerDB, redisClient) {
                             }
                             else {
                                 createTrigger(triggerIdentifier, doc)
-                                .then(newTrigger => {
-                                    Object.assign(cachedTrigger, newTrigger);
+                                .then(cachedTrigger => {
+                                    self.triggers[triggerIdentifier] = cachedTrigger;
                                     logger.info(method, triggerIdentifier, 'created successfully');
                                     if (cachedTrigger.intervalHandle && shouldFireTrigger(cachedTrigger)) {
                                         try {
@@ -358,7 +364,6 @@ module.exports = function(logger, triggerDB, redisClient) {
                     if ((!doc.status || doc.status.active === true) && (!doc.monitor || doc.monitor === self.host)) {
                         createTrigger(triggerIdentifier, doc)
                         .then(cachedTrigger => {
-                            cachedTrigger.additionalData = doc.additionalData;
                             self.triggers[triggerIdentifier] = cachedTrigger;
                             logger.info(method, triggerIdentifier, 'created successfully');
 

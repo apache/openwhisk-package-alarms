@@ -38,7 +38,8 @@ function main(params) {
             status: {
                 'active': true,
                 'dateChanged': Date.now()
-            }
+            },
+            timezone: params.timezone
         };
 
         if (params.fireOnce) {
@@ -82,14 +83,15 @@ function main(params) {
                 }
 
                 try {
-                    cronHandle = new CronJob(params.cron, function() {});
+                    cronHandle = new CronJob(params.cron, function() {}, undefined, false, params.timezone);
                     //validate cron granularity if 5 fields are allowed instead of 6
                     if (params.limitCronFields && hasSecondsGranularity(params.cron)) {
                         return common.sendError(400, 'cron pattern is limited to 5 fields with 1 minute as the finest granularity');
                     }
                     newTrigger.cron = params.cron;
                 } catch(ex) {
-                    return common.sendError(400, `cron pattern '${params.cron}' is not valid`);
+                    var message = ex.message !== 'Invalid timezone.' ? `cron pattern '${params.cron}' is not valid` : ex.message;
+                    return common.sendError(400, message);
                 }
             }
 
