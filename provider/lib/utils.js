@@ -100,13 +100,7 @@ module.exports = function(logger, triggerDB, redisClient) {
                 json: triggerData.payload
             }, function(error, response) {
                 try {
-                    var statusCode;
-                    if (!error) {
-                        statusCode = response.statusCode;
-                    }
-                    else if (error.statusCode) {
-                        statusCode = error.statusCode;
-                    }
+                    var statusCode = !error ? response.statusCode : error.statusCode;
                     var triggerIdentifier = triggerData.triggerID;
                     logger.info(method, triggerIdentifier, 'http post request, STATUS:', statusCode);
 
@@ -508,10 +502,9 @@ module.exports = function(logger, triggerDB, redisClient) {
     this.authRequest = function(triggerData, options, cb) {
         var method = 'authRequest';
 
-        authHandler.handleAuth(triggerData)
-        .then(auth => {
-            options.auth = auth;
-            request(options, cb);
+        authHandler.handleAuth(triggerData, options)
+        .then(requestOptions => {
+            request(requestOptions, cb);
         })
         .catch(err => {
             logger.error(method, err);
