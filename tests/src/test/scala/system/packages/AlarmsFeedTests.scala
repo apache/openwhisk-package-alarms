@@ -83,7 +83,7 @@ class AlarmsFeedTests
             activations should be(1)
     }
 
-    it should "update cron, startDate and stopDate parameters" in withAssetCleaner(wskprops) {
+    it should "update cron, timezone, startDate and stopDate parameters" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskProps = wp
             val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
@@ -102,6 +102,7 @@ class AlarmsFeedTests
             val cron = "* * * * *"
             val startDate = System.currentTimeMillis + (1000 * 30)
             val stopDate = startDate + (1000 * 100)
+            val timezone = "America/New_York"
 
             // create trigger feed
             println(s"Creating trigger: $triggerName")
@@ -110,9 +111,9 @@ class AlarmsFeedTests
                     trigger.create(name, feed = Some(s"$packageName/alarm"), parameters = Map(
                         "cron" -> cron.toJson,
                         "startDate" -> startDate.toJson,
-                        "stopDate" -> stopDate.toJson))
+                        "stopDate" -> stopDate.toJson,
+                        "timezone" -> timezone.toJson))
             }
-
 
             val actionName = s"$packageName/alarm"
             val readRunResult = wsk.action.invoke(actionName, parameters = Map(
@@ -132,6 +133,7 @@ class AlarmsFeedTests
                             config should contain("cron" -> cron.toJson)
                             config should contain("startDate" -> startDate.toJson)
                             config should contain("stopDate" -> stopDate.toJson)
+                            config should contain("timezone" -> timezone.toJson)
 
                             status should contain("active" -> true.toJson)
                             status should contain key "dateChanged"
@@ -143,6 +145,7 @@ class AlarmsFeedTests
             val updatedCron = "*/2 * * * *"
             val updatedStartDate = System.currentTimeMillis + (1000 * 30)
             val updatedStopDate = updatedStartDate + (1000 * 100)
+            val updatedTimezone = "America/Los_Angeles"
 
             val updateRunAction = wsk.action.invoke(actionName, parameters = Map(
                 "triggerName" -> triggerName.toJson,
@@ -150,7 +153,8 @@ class AlarmsFeedTests
                 "authKey" -> wskProps.authKey.toJson,
                 "cron" -> updatedCron.toJson,
                 "startDate" -> updatedStartDate.toJson,
-                "stopDate" -> updatedStopDate.toJson
+                "stopDate" -> updatedStopDate.toJson,
+                "timezone" -> updatedTimezone.toJson
             ))
 
             withActivation(wsk.activation, updateRunAction) {
@@ -171,6 +175,7 @@ class AlarmsFeedTests
                             val config = result.getFields("config").head.asInstanceOf[JsObject].fields
 
                             config should contain("cron" -> updatedCron.toJson)
+                            config should contain("timezone" -> updatedTimezone.toJson)
                             config should contain("startDate" -> updatedStartDate.toJson)
                             config should contain("stopDate" -> updatedStopDate.toJson)
                     }
