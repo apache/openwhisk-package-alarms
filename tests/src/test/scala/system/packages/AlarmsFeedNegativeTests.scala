@@ -126,6 +126,36 @@ class AlarmsFeedNegativeTests
 
     }
 
+    it should "return error message when alarm action includes invalid timezone parameter" in withAssetCleaner(wskprops) {
+        (wp, assetHelper) =>
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyAlarmsTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyAlarmsPackage"
+            val feed = "alarm"
+
+            // the package alarms should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/alarms")
+            println("fetched package alarms")
+            packageGetResult.stdout should include("ok")
+
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/alarms", name)
+            }
+
+            // create trigger with feed
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                        "trigger_payload" -> "alarmTest".toJson,
+                        "cron" -> "* * * * *".toJson,
+                        "timezone" -> "America/RTP".toJson),
+                        expectedExitCode = 246)
+            }
+            feedCreationResult.stderr should include("Invalid timezone.")
+
+    }
+
     it should "return error message when alarms once action includes an invalid date parameter" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
