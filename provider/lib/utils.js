@@ -113,11 +113,15 @@ module.exports = function(logger, triggerDB, redisClient) {
                             triggerData.triggersLeft++;
                         }
 
-                        if (!error && shouldDisableTrigger(statusCode)) {
-                            //disable trigger
-                            var message = 'Automatically disabled after receiving a ' + statusCode + ' status code when firing the trigger';
-                            disableTrigger(triggerIdentifier, statusCode, message);
-                            reject('Disabled trigger ' + triggerIdentifier + ' due to status code: ' + statusCode);
+                        if (statusCode && shouldDisableTrigger(statusCode)) {
+                            var message;
+                            try {
+                                message = error.error.errorMessage;
+                            } catch (e) {
+                                message = `Received a ${statusCode} status code when firing the trigger`;
+                            }
+                            disableTrigger(triggerIdentifier, statusCode, `Trigger automatically disabled: ${message}`);
+                            reject(`Disabled trigger ${triggerIdentifier}: ${message}`);
                         }
                         else {
                             if (retryCount < retryAttempts) {
