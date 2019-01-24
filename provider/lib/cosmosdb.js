@@ -14,12 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+const EventEmitter = require('events');
 
 module.exports = function(endpoint, masterKey) {
     var DocumentClient = require('documentdb').DocumentClient;
-
     var client = new DocumentClient(endpoint, {masterKey: masterKey});
-
+    this.dbFeedEvents = new DBFeed();
+    this.feed_etag = -1;
     this.client = client;
     var utilsDB = this;
 
@@ -55,18 +56,19 @@ module.exports = function(endpoint, masterKey) {
             if (err) {
                 reject(err);
             }
-            if (results.length === 0) {
+            else {
+                if (results.length === 0) {
                 logger.info(method, "No Trigger database found. Creating one.");
                 createDB(collectionName)
                     .then((col) => {
                         logger.info(method, "created trigger database.");
                         utilsDB.collectionLink = col._self;
-                        resolve(utilsDB);
-                    })
-                    .catch((err) => reject(err));
-            } else {
-                utilsDB.collectionLink = results[0]._self;
-                utilsDB.prefix = results[0].id;
+                    });
+                } else {
+                    utilsDB.collectionLink = results[0]._self;
+                    utilsDB.prefix = results[0].id;
+                }
+                checkFeed();
                 resolve(utilsDB);
             }
             });
@@ -105,7 +107,7 @@ module.exports = function(endpoint, masterKey) {
         });
     };
 
-    this.getTrigger = function(triggerID) {
+    this.getTrigger = function(triggerID, retry = true) {
         return new Promise(function(resolve, reject) {
             let querySpec = {
                 query: 'SELECT * FROM root r WHERE r.id = @id',
@@ -113,13 +115,25 @@ module.exports = function(endpoint, masterKey) {
             };
 
             client.queryDocuments(utilsDB.collectionLink, querySpec).toArray(function(err, results) {
-            if (err) reject(err);
-
-           if(results.length == 0)
-                resolve();
-            else {
-                console.log("Found Trigger " + triggerID);
-                resolve(results[0]);
+            if (err) {
+                if(retry) {
+                    utilsDB.getTrigger(triggerID, false)
+                    .then(doc => {
+                        resolve(doc);
+                    })
+                    .catch(err => {
+                        reject(err);
+                    });
+                }
+                else {
+                    reject(err);
+                }
+            } else {
+                if(results.length == 0)
+                    resolve();
+                else {
+                    resolve(results[0]);
+                }
             }
             });
         });
@@ -197,18 +211,21 @@ module.exports = function(endpoint, masterKey) {
         return new Promise(function(resolve, reject) {
 
             let querySpec = {
-                query: 'SELECT * FROM root r WHERE CONTAINS(r.worker, @worker)',
-                parameters: [{ name: '@worker', value: worker }]
+                query: 'SELECT * FROM root r WHERE r.key = @key',
+                parameters: [{ name: '@key', value: worker }]
             };
 
             client.queryDocuments(utilsDB.collectionLink, querySpec).toArray(function(err, results) {
-            if (err) reject(err);
 
-           if(results.length == 0)
+            if (err) {
+                reject(err);
+            } else {
+                if(results.length == 0)
                 resolve();
-            else {
-                console.log("Found Triggers for worker " + worker);
-                resolve(results);
+                else {
+                    console.log("Found Triggers for worker " + worker);
+                    resolve(results);
+                }
             }
             });
         });
@@ -220,4 +237,49 @@ module.exports = function(endpoint, masterKey) {
 
         return "alarmservice";
     };
+
+    this.follow = function(func) {
+        return utilsDB.dbFeedEvents;
+    };
+
+    function checkFeed() {
+        setTimeout(function() {
+            console.log("about to execute ");
+            checkDBChanges();
+            checkFeed();
+        }, 10000);
+    }
+
+    function checkDBChanges(){
+        var options = {
+            a_im: "Incremental feed",
+            accessCondition: {
+                type: "IfNoneMatch",
+                condition: utilsDB.feed_etag
+            }
+        };
+        var query = client.readDocuments(utilsDB.collectionLink, options);
+        query.executeNext((err, results, headers) => {
+
+            if(err) {
+                console.log("Error while fetching DB feed - " + err);
+            }
+            else{
+                if(utilsDB.feed_etag !== -1){
+                    results.forEach(function(item){
+                        console.log("got feed item");
+                        utilsDB.dbFeedEvents.emit("change", item);
+                    });
+                }
+                utilsDB.feed_etag = headers.etag;
+            }
+        });
+    }
 };
+
+class DBFeed extends EventEmitter {
+
+    follow(){
+        //do nothing. This is just to emulate follow method for couchdb feed
+    }
+}

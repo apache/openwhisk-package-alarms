@@ -25,12 +25,10 @@ module.exports = function() {
                 var cosmosdb = require('./cosmosdb');
                 db = new cosmosdb(config.dburl, config.masterkey);
                 db.init(config.rootdb, config.dbname)
-                    .then((res) => {
-                        database.utilsDB = db;
-                        resolve();
-                    })
-                    .catch((err) => {
-                        reject(err);});
+                .then((res) => {
+                    database.utilsDB = db;
+                    resolve();
+                });
             }
             else
                 reject("No db type to initialize");

@@ -31,16 +31,16 @@ module.exports = function(endpoint, masterKey) {
         };
         return new Promise((resolve, reject) => {
         client.queryDatabases(querySpec).toArray((err, results) => {
-            if(err) reject(err);
-
-            console.log("cosmosdb client initialized successfully");
-            utilsDB.dbLink = results[0]._self;
-            utilsDB.getDatabase(collectionName)
+            if(err) {
+                reject(err);
+            } else {
+                console.log("cosmosdb client initialized successfully");
+                utilsDB.dbLink = results[0]._self;
+                utilsDB.getDatabase(collectionName)
                 .then((col) => {
-                    console.log("got database");
                     resolve();
-                })
-                .catch((err) => { reject(err);});
+                });
+            }
         });
         });
     };
@@ -53,22 +53,24 @@ module.exports = function(endpoint, masterKey) {
         };
         return new Promise((resolve, reject) => {
             client.queryCollections(utilsDB.dbLink, querySpec).toArray((err, results) => {
-            if (err) reject(err);
-
-            if (results.length === 0) {
+            if (err) {
+                reject(err);
+            } else {
+                if (results.length === 0) {
                 console.log("No valid collection. Create One");
                 utilsDB.createDatabase(collectionName)
-                    .then((col) => {
-                        utilsDB.collectionLink = col._self;
-                        resolve(col);
-                    })
-                    .catch((err) => reject(err));
-            } else {
-                console.log("Found valid collection");
-                utilsDB.collectionLink = results[0]._self;
-                resolve(results);
+                .then((col) => {
+                    utilsDB.collectionLink = col._self;
+                    resolve(col);
+                });
+                } else {
+                    console.log("Found valid collection");
+                    utilsDB.collectionLink = results[0]._self;
+                    resolve(results);
+                }
+
             }
-            });
+        });
         });
     };
 
@@ -77,11 +79,13 @@ module.exports = function(endpoint, masterKey) {
         var collectionDefinition = { id: collectionName };
         return new Promise((resolve, reject) => {
             client.createCollection(utilsDB.dbLink, collectionDefinition, function(err, collection) {
-                if(err) reject(err);
-
-                console.log("Created collection");
-                utilsDB.collectionLink = collection._self;
-                resolve(collection);
+                if(err) {
+                    reject(err);
+                } else {
+                    console.log("Created collection");
+                    utilsDB.collectionLink = collection._self;
+                    resolve(collection);
+                }
             });
         });
     };
@@ -102,13 +106,15 @@ module.exports = function(endpoint, masterKey) {
 
         return new Promise(function(resolve, reject) {
 
-            client.createDocument(utilsDB.collectionLink, newTrigger, function(err, document) {
-            if(err) reject(err);
-
+        client.createDocument(utilsDB.collectionLink, newTrigger, function(err, document) {
+        if(err) {
+            reject(err);
+        } else {
             console.log("created trigger " + triggerID);
             resolve();
+        }
         });
-        });
+    });
     };
 
     this.getTrigger = function(triggerID, retry = true) {
@@ -161,26 +167,25 @@ module.exports = function(endpoint, masterKey) {
                     client.replaceDocument(doc._self, trigger, function(err, replaced) {
                     if (err) {
                         if (err.statusCode === 409 && retryCount < 5) {
-                        setTimeout(function () {
-                            utilsDB.updateTrigger(triggerID, trigger, params, (retryCount + 1))
-                            .then(id => {
-                                resolve(id);
-                            })
-                            .catch(err => {
-                                reject(err);
-                            });
-                        }, 1000);
+                            setTimeout(function () {
+                                utilsDB.updateTrigger(triggerID, trigger, params, (retryCount + 1))
+                                .then(id => {
+                                    resolve(id);
+                                })
+                                .catch(err => {
+                                    reject(err);
+                                });
+                            }, 1000);
                         }
                         else {
                             reject(common.sendError(err.statusCode, 'there was an error while updating the trigger in the database.', err.message));
                         }
+                    } else {
+                        console.log("Updated Trigger " + triggerID);
+                        resolve(replaced);
                     }
-
-                    console.log("Updated Trigger " + triggerID);
-                    resolve(replaced);
                     });
-                })
-                .catch((err) => { reject(err);});
+                });
         });
     };
 
@@ -207,15 +212,16 @@ module.exports = function(endpoint, masterKey) {
 
         return new Promise(function(resolve, reject) {
             utilsDB.getTrigger(triggerID)
-                .then((doc) => {
-                    client.deleteDocument(doc._self, function(err) {
-                    if (err) reject(err);
-
+            .then((doc) => {
+                client.deleteDocument(doc._self, function(err) {
+                if (err) {
+                    reject(err);
+                } else {
                     console.log("Deleted Trigger " + triggerID);
                     resolve();
-                    });
-                })
-                .catch((err) => { reject(err);});
+                }
+                });
+            });
         });
     };
 };
