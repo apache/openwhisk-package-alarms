@@ -31,7 +31,7 @@ module.exports = function() {
                 });
             }
             else
-                reject("No db type to initialize");
+                reject("type must be couchdb or cosmosdb; found " + config.type);
         });
     };
 

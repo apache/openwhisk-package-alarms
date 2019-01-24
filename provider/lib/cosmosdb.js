@@ -21,6 +21,7 @@ module.exports = function(endpoint, masterKey) {
     var client = new DocumentClient(endpoint, {masterKey: masterKey});
     this.dbFeedEvents = new DBFeed();
     this.feed_etag = -1;
+    this.feedCheckInterval = 60000; //every 1 min
     this.client = client;
     var utilsDB = this;
 
@@ -33,11 +34,13 @@ module.exports = function(endpoint, masterKey) {
         client.queryDatabases(querySpec).toArray((err, results) => {
             if(err){
                 reject(err);
+            } else {
+                console.log("cosmosdb client initialized successfully");
+                utilsDB.dbLink = results[0]._self;
+                if(process.env.COSMOSDB_FEED_INTERVAL)
+                    utilsDB.feedCheckInterval = process.env.COSMOSDB_FEED_INTERVAL;
+                resolve();
             }
-
-            console.log("cosmosdb client initialized successfully");
-            utilsDB.dbLink = results[0]._self;
-            resolve();
         });
         });
     };
@@ -244,10 +247,9 @@ module.exports = function(endpoint, masterKey) {
 
     function checkFeed() {
         setTimeout(function() {
-            console.log("about to execute ");
             checkDBChanges();
             checkFeed();
-        }, 10000);
+        }, utilsDB.feedCheckInterval);
     }
 
     function checkDBChanges(){
