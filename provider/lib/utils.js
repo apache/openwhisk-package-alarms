@@ -195,7 +195,6 @@ module.exports = function(logger, triggerDB, redisClient) {
                     self.sanitizer.deleteTriggerAndRules(triggerData);
                 }
                 else {
-                    var auth = triggerData.apikey.split(':');
                     self.sanitizer.deleteTrigger(triggerData, 0)
                     .then(info => {
                         logger.info(method, triggerIdentifier, info);
