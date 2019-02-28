@@ -1,4 +1,4 @@
-FROM node:10.15.0
+FROM node:10.15.2
 
 # only package.json
 ADD package.json /
