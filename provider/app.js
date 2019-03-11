@@ -160,7 +160,7 @@ function getDBConfig() {
     config = {
         protocol: dbProtocol,
         host: dbHost,
-        username: databaseName,
+        username: dbUsername,
         password: dbPassword,
         type: dbType,
         masterkey: cosmosdbMasterKey,
