@@ -126,3 +126,7 @@ January 1, 2019, 00:00:00 UTC and will stop firing January 31, 2019, 23:59:00 UT
   ```
 
  **Note**: The parameter `maxTriggers` is deprecated and will be removed soon.  To stop the Trigger, use the `stopDate` parameter.
+
+# Disclaimer
+
+Apache OpenWhisk Package Alarms is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.
