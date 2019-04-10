@@ -37,7 +37,7 @@ if [ ${dockerhub_image_tag} == "latest" ]; then
   dockerhub_githash_image="${dockerhub_image_prefix}/${dockerhub_image_name}:${short_commit}"
 
   echo docker tag ${dockerhub_image} ${dockerhub_githash_image}
-  docker tag ${dockerhub_githash_image}
+  docker tag ${dockerhub_image} ${dockerhub_githash_image}
 
   echo docker push ${dockerhub_githash_image}
   docker push ${dockerhub_githash_image}
