@@ -17,7 +17,7 @@
 #
 -->
 
-# Using the Alarm package
+# Apache OpenWhisk Alarm Package
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 [![Build Status](https://travis-ci.org/apache/incubator-openwhisk-package-alarms.svg?branch=master)](https://travis-ci.org/apache/incubator-openwhisk-package-alarms)
@@ -126,6 +126,10 @@ January 1, 2019, 00:00:00 UTC and will stop firing January 31, 2019, 23:59:00 UT
   ```
 
  **Note**: The parameter `maxTriggers` is deprecated and will be removed soon.  To stop the Trigger, use the `stopDate` parameter.
+
+# Building from Source
+
+To build this package from source, execute the command `./gradlew distDocker`
 
 # Disclaimer
 
