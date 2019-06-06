@@ -16,9 +16,9 @@
  */
 package system.packages
 
-import com.jayway.restassured.RestAssured
-import com.jayway.restassured.config.SSLConfig
-import com.jayway.restassured.http.ContentType
+import io.restassured.RestAssured
+import io.restassured.config.SSLConfig
+import io.restassured.http.ContentType
 import common.TestUtils.FORBIDDEN
 import common.{Wsk, WskProps}
 import org.junit.runner.RunWith
