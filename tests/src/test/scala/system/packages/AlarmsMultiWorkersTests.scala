@@ -16,9 +16,9 @@
  */
 package system.packages
 
-import com.jayway.restassured.RestAssured
-import com.jayway.restassured.config.SSLConfig
-import com.jayway.restassured.http.ContentType
+import io.restassured.RestAssured
+import io.restassured.config.SSLConfig
+import io.restassured.http.ContentType
 import common.TestUtils.DONTCARE_EXIT
 import common._
 import org.junit.runner.RunWith

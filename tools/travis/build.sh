@@ -29,6 +29,7 @@ cd $UTILDIR
 scancode/scanCode.py --config scancode/ASF-Release.cfg $ROOTDIR
 
 # jshint support
+sudo apt-get -y update
 sudo apt-get -y install nodejs npm
 sudo npm install -g jshint
 
