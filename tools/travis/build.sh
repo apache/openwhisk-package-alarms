@@ -28,10 +28,6 @@ UTILDIR="$ROOTDIR/../incubator-openwhisk-utilities"
 cd $UTILDIR
 scancode/scanCode.py --config scancode/ASF-Release.cfg $ROOTDIR
 
-# jshint support
-sudo apt-get -y install nodejs npm
-sudo npm install -g jshint
-
 # run jshint
 cd $ROOTDIR
 jshint --exclude tests .

@@ -19,6 +19,10 @@
 SCRIPTDIR=$(cd $(dirname "$0") && pwd)
 HOMEDIR="$SCRIPTDIR/../../../"
 
+# jshint support
+sudo apt-get -y install nodejs npm
+sudo npm install -g jshint
+
 cd $HOMEDIR
 git clone https://github.com/apache/incubator-openwhisk-utilities.git
 
