@@ -20,10 +20,10 @@ SCRIPTDIR=$(cd $(dirname "$0") && pwd)
 HOMEDIR="$SCRIPTDIR/../../../"
 
 cd $HOMEDIR
-git clone https://github.com/apache/incubator-openwhisk-utilities.git
+git clone https://github.com/apache/openwhisk-utilities.git
 
 cd $HOMEDIR
-git clone https://github.com/apache/incubator-openwhisk.git openwhisk
+git clone https://github.com/apache/openwhisk.git openwhisk
 cd $HOMEDIR/openwhisk
 ./tools/travis/setup.sh
 

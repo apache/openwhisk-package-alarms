@@ -20,7 +20,7 @@
 # Apache OpenWhisk Alarm Package
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
-[![Build Status](https://travis-ci.org/apache/incubator-openwhisk-package-alarms.svg?branch=master)](https://travis-ci.org/apache/incubator-openwhisk-package-alarms)
+[![Build Status](https://travis-ci.org/apache/openwhisk-package-alarms.svg?branch=master)](https://travis-ci.org/apache/openwhisk-package-alarms)
 
 The `/whisk.system/alarms` package can be used to fire a trigger at a specified frequency. Alarms are useful for setting up recurring jobs or tasks, such as invoking a system backup action every hour.
 
@@ -130,7 +130,3 @@ January 1, 2019, 00:00:00 UTC and will stop firing January 31, 2019, 23:59:00 UT
 # Building from Source
 
 To build this package from source, execute the command `./gradlew distDocker`
-
-# Disclaimer
-
-Apache OpenWhisk Package Alarms is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.
