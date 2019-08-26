@@ -42,7 +42,7 @@ module.exports = function(logger, newTrigger) {
         try {
             return new Promise(function(resolve, reject) {
 
-                var cronHandle = new CronJob(newTrigger.cron, callback, undefined, false, newTrigger.timezone);
+                var cronHandle = new CronJob(distributeCron(newTrigger), callback, undefined, false, newTrigger.timezone);
 
                 if (newTrigger.stopDate) {
                     cachedTrigger.stopDate = newTrigger.stopDate;
@@ -84,5 +84,28 @@ module.exports = function(logger, newTrigger) {
             return Promise.reject(err);
         }
     };
+
+    function hashName(name) {
+        var hash = 0;
+
+        for (var i = 0; i < name.length; i++) {
+            var char = name.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+        }
+        hash %= 60;
+        hash = hash < 0 ? -hash : hash;
+
+        return hash.toString(10);
+    }
+
+    function distributeCron(trigger) {
+        var cronFields = (trigger.cron + '').trim().split(/\s+/);
+
+        if (trigger.strict === false && cronFields.length === 5) {
+            return cronFields.splice(0, 0, hashName(trigger.name)).join(' ');
+        }
+
+        return trigger.cron;
+    }
 
 };
