@@ -5,7 +5,6 @@ const CronJob = require('cron').CronJob;
 const moment = require('moment');
 const common = require('./lib/common');
 const Database = require('./lib/Database');
-const config = require('./lib/config');
 
 function main(params) {
 
@@ -20,8 +19,8 @@ function main(params) {
         namespace: triggerParts.namespace,
         additionalData: common.constructObject(params.additionalData),
     };
-    var triggerID = config.constructTriggerID(triggerData);
-
+    var triggerID = new Database().constructTriggerID(getDBConfig(params), triggerData);
+    
     var workers = params.workers instanceof Array ? params.workers : [];
     var deleteAfterFireArray = ['false', 'true', 'rules'];
     var db;
@@ -132,7 +131,10 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                return getDatabase(getDBConfig(params));
+            })
+            .then((database) => {
+                db = database
                 return db.getWorkerID(workers);
             })
             .then((worker) => {
@@ -157,7 +159,10 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                return getDatabase(getDBConfig(params));
+            })
+            .then((database) => {
+                db = database
                 return db.getTrigger(triggerID);
             })
             .then(doc => {
@@ -206,7 +211,10 @@ function main(params) {
 
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                return getDatabase(getDBConfig(params));
+            })
+            .then((database) => {
+                db = database
                 return db.getTrigger(triggerID);
             })
             .then(trigger => {
@@ -291,13 +299,13 @@ function main(params) {
                 if (Object.keys(updatedParams).length === 0) {
                     return reject(common.sendError(400, 'no updatable parameters were specified'));
                 }
-                return db.disableTrigger(trigger._id, trigger, 0, 'updating');
+                return db.disableTrigger(triggerID, trigger, 0, 'updating');
             })
-            .then(triggerID => {
+            .then(trigger => {
                 return db.getTrigger(triggerID);
             })
             .then(trigger => {
-                return db.updateTrigger(trigger._id, trigger, updatedParams, 0);
+                return db.updateTrigger(triggerID, trigger, updatedParams, 0);
             })
             .then(() => {
                 resolve({
@@ -316,13 +324,16 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, true)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                return getDatabase(getDBConfig(params));
+            })
+            .then((database) => {
+                db = database
                 return db.getTrigger(triggerID);
             })
             .then(trigger => {
-                return db.disableTrigger(trigger._id, trigger, 0, 'deleting');
+                return db.disableTrigger(triggerID, trigger, 0, 'deleting');
             })
-            .then(triggerID => {
+            .then(trigger => {
                 return db.deleteTrigger(triggerID, 0);
             })
             .then(() => {
@@ -365,6 +376,34 @@ function hasSecondsGranularity(cron) {
 
     var fields = (cron + '').trim().split(/\s+/);
     return fields.length > 5 && fields[fields.length - 6] !== '0';
+}
+
+function getDatabase(config) {
+    return new Promise(function (resolve, reject) {
+        var db = new Database();
+        db.initDB(config)
+        .then((res) =>
+        {
+            resolve(db);
+        })
+        .catch((err) => {
+            reject(err);
+        });
+    });
+}
+
+function getDBConfig(params) {
+    var config = {};
+    if(params) {
+        config = {
+            dburl: params.DB_URL,
+            dbname: params.DB_NAME,
+            type: params.DB_TYPE,
+            masterkey: params.COSMOSDB_MASTERKEY,
+            rootdb: params.COSMOSDB_ROOT_DB
+        };
+    }
+    return config;
 }
 
 exports.main = main;

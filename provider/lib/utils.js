@@ -18,7 +18,7 @@ module.exports = function(logger, triggerDB, redisClient) {
     var filterDDName = constants.FILTERS_DESIGN_DOC;
     var viewDDName = constants.VIEWS_DESIGN_DOC;
     var triggersByWorker = constants.TRIGGERS_BY_WORKER;
-    var redisKeyPrefix = process.env.REDIS_KEY_PREFIX || triggerDB.config.db;
+    var redisKeyPrefix = process.env.REDIS_KEY_PREFIX || triggerDB.getPrefix();
     var self = this;
 
     this.triggers = {};
@@ -225,9 +225,10 @@ module.exports = function(logger, triggerDB, redisClient) {
     function disableTrigger(triggerIdentifier, statusCode, message) {
         var method = 'disableTrigger';
 
-        triggerDB.get(triggerIdentifier, function (err, existing) {
-            if (!err) {
-                if (!existing.status || existing.status.active === true) {
+        triggerDB.getTrigger(triggerIdentifier)
+        .then((existing) => {
+
+            if (!existing.status || existing.status.active === true) {
                     var updatedTrigger = existing;
                     var status = {
                         'active': false,
@@ -236,21 +237,21 @@ module.exports = function(logger, triggerDB, redisClient) {
                     };
                     updatedTrigger.status = status;
 
-                    triggerDB.insert(updatedTrigger, triggerIdentifier, function (err) {
-                        if (err) {
-                            logger.error(method, 'there was an error while disabling', triggerIdentifier, 'in database.', err);
-                        }
-                        else {
-                            logger.info(method, 'trigger', triggerIdentifier, 'successfully disabled in database');
-                        }
+                    triggerDB.updateTrigger(triggerIdentifier, updatedTrigger)
+                    .then((res) => {
+                        logger.info(method, 'trigger', triggerIdentifier, 'successfully disabled in database');
+                    })
+                    .catch((err) => {
+                        logger.error(method, 'there was an error while disabling', triggerIdentifier, 'in database.', err);
                     });
+
                 }
-            }
-            else {
-                logger.info(method, 'could not find', triggerIdentifier, 'in database');
-                //make sure it is already stopped
-                stopTrigger(triggerIdentifier);
-            }
+
+        })
+        .catch((err) => {
+            logger.info(method, 'could not find', triggerIdentifier, 'in database');
+            //make sure it is already stopped
+            stopTrigger(triggerIdentifier);
         });
     }
 
@@ -276,11 +277,14 @@ module.exports = function(logger, triggerDB, redisClient) {
         setupFollow('now');
 
         logger.info(method, 'resetting system from last state');
-        triggerDB.view(viewDDName, triggersByWorker, {reduce: false, include_docs: true, key: self.worker}, function(err, body) {
-            if (!err) {
-                body.rows.forEach(function (trigger) {
+
+        triggerDB.getTriggerByWorkers(viewDDName, triggersByWorker, self.worker)
+            .then((res) => {
+                logger.info(method, 'got triggers', res);
+                res.forEach(function (trigger) {
+                    logger.info(method, 'trigger:', trigger);
                     var triggerIdentifier = trigger.id;
-                    var doc = trigger.doc;
+                    var doc = trigger;
 
                     if (!(triggerIdentifier in self.triggers) && !doc.monitor) {
                         //check if trigger still exists in whisk db
@@ -294,6 +298,7 @@ module.exports = function(logger, triggerDB, redisClient) {
                             method: 'get',
                             url: uri
                         }, function (error, response) {
+                            logger.info(method, 'authRequest', error, response);
                             //disable trigger in database if trigger is dead
                             if (!error && shouldDisableTrigger(response.statusCode)) {
                                 var message = 'Automatically disabled after receiving a ' + response.statusCode + ' status code on trigger initialization';
@@ -301,6 +306,7 @@ module.exports = function(logger, triggerDB, redisClient) {
                                 logger.error(method, 'trigger', triggerIdentifier, 'has been disabled due to status code:', response.statusCode);
                             }
                             else {
+                                logger.info(method, 'will create trigger')
                                 createTrigger(triggerIdentifier, doc)
                                 .then(newTrigger => {
                                     Object.assign(cachedTrigger, newTrigger);
@@ -322,12 +328,12 @@ module.exports = function(logger, triggerDB, redisClient) {
                         });
                     }
                 });
-            } else {
+            })
+            .catch((err) => {
                 logger.error(method, 'could not get latest state from database', err);
-            }
-        });
+            });
     };
-
+    
     function setupFollow(seq) {
         var method = 'setupFollow';
 
