@@ -1,5 +1,19 @@
-// Licensed to the Apache Software Foundation (ASF) under one or more contributor
-// license agreements; and to You under the Apache License, Version 2.0.
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 const CronJob = require('cron').CronJob;
 const moment = require('moment');
@@ -39,7 +53,6 @@ function main(params) {
                 'dateChanged': Date.now()
             }
         };
-        Object.assign(newTrigger, triggerData);
 
         if (params.fireOnce) {
             if (!params.date) {
@@ -82,14 +95,16 @@ function main(params) {
                 }
 
                 try {
-                    cronHandle = new CronJob(params.cron, function() {});
+                    cronHandle = new CronJob(params.cron, function() {}, undefined, false, params.timezone);
                     //validate cron granularity if 5 fields are allowed instead of 6
                     if (params.limitCronFields && hasSecondsGranularity(params.cron)) {
                         return common.sendError(400, 'cron pattern is limited to 5 fields with 1 minute as the finest granularity');
                     }
                     newTrigger.cron = params.cron;
+                    newTrigger.timezone = params.timezone;
                 } catch(ex) {
-                    return common.sendError(400, `cron pattern '${params.cron}' is not valid`);
+                    var message = ex.message !== 'Invalid timezone.' ? `cron pattern '${params.cron}' is not valid` : ex.message;
+                    return common.sendError(400, message);
                 }
             }
 
@@ -140,6 +155,7 @@ function main(params) {
             .then((worker) => {
                 console.log('trigger will be assigned to worker ' + worker);
                 newTrigger.worker = worker;
+                Object.assign(newTrigger, triggerData);
                 return db.createTrigger(triggerID, newTrigger);
             })
             .then(() => {
@@ -191,6 +207,7 @@ function main(params) {
                     }
                     else {
                         body.config.cron = doc.cron;
+                        body.config.timezone = doc.timezone;
                     }
                 }
                 resolve({
@@ -258,17 +275,25 @@ function main(params) {
                         }
                     }
                     else {
-                        if (params.cron) {
+                        if (params.cron || params.timezone) {
+                            var cron = params.cron || trigger.cron;
+                            var timezone = params.timezone || trigger.timezone;
                             try {
-                                new CronJob(params.cron, function() {});
+                                cronHandle = new CronJob(cron, function() {}, undefined, false, timezone);
                                 //validate cron granularity if 5 fields are allowed instead of 6
-                                if (params.limitCronFields && hasSecondsGranularity(params.cron)) {
+                                if (params.cron && params.limitCronFields && hasSecondsGranularity(params.cron)) {
                                     return reject(common.sendError(400, 'cron pattern is limited to 5 fields with 1 minute as the finest granularity'));
                                 }
                             } catch (ex) {
-                                return reject(common.sendError(400, `cron pattern '${params.cron}' is not valid`));
+                                var message = ex.message !== 'Invalid timezone.' ? `cron pattern '${cron}' is not valid` : ex.message;
+                                return reject(common.sendError(400, message));
                             }
-                            updatedParams.cron = params.cron;
+                            if (params.cron) {
+                                updatedParams.cron = params.cron;
+                            }
+                            if (params.timezone) {
+                                updatedParams.timezone = params.timezone;
+                            }
                         }
                     }
 

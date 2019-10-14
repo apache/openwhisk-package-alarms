@@ -21,6 +21,13 @@ language: scala
 services:
 - docker
 
+notifications:
+  email: false
+  webhooks:
+    urls:
+      # travis2slack webhook to enable DMs on openwhisk-team.slack.com to PR authors with TravisCI results
+      secure: "Mn8zSyG5OUx7lUAgqUKfNT5MpoXFHJK4eO6ZM7c6b/SVNs1W0TjXeOT6YfkqVFNbamXdX68hSxjvarpdw9Zkdt/pDRk2kr+oSvlG2+kzHz6Amx4CuyIQsCSDogsPhaKyiyjg5fCeSSnYL+P7O3+9StS0XTV3bUeSERMi9L2NezzwfjDpkNL+CBJuPNQC/nfVMo0xphVdO9/kSoftL4gjWdtsIEKgY3Qre4c6KfNjKfwlmIJL/QCJqC0Wt3C+zy/IzvvdhYJEPGCoZRknvdWr0VziHl3z8L+EqUH9uO0TIdFSHUjjv+BU7rnT5C17IObRUbw3gBTz8cioKqIGbRCDaUrtN67LvHcsF6bnjG4mam/aCwKreMe3u8coK4tvDDQQcn3mNXANJtXliNLYEDjcNqgBuOFWSfvhHi0+ux1hIufnRQhNoYhym9cyDelmCbe8+3O8TIvGW15oKYCHFuod/I8M3qCDq5nG0q6gpM7j2rNv+56XjJETcbcXAVWlLqztvtHtPXibjaWChlGZG9fM29AfH2fKCmDGzx0C1BiX6mxxnFRFBwVWOYf6p16lr3Zl3DXS6vS9F0fESf5tBKWeMYDdPe4Gi8NGqfURKVfr3t0JAturgJImyLs2L8NqpaiTMnOBgZrfR9Z5gpSuqd14TTM6NTF0e2UHhl0ce6VYbMI="
+
 env:
   global:
     - secure: "cCDd/PfYpC5ndxwF/Tl3UUvYIQblPk2iugGIOO7RB0/iufrncn2vtmpo+CdVFS59bs5IpgNGj/gXcmilcQSMo4yuIXe1QGtUNp5oYtVg8/GALfpLsOawYfZ7Zz9oYhstz06R5epoCGJtzoQAwr9A8+o9W4gaDrHzVBiF1eNIYlyM3aDXfM3IiL5R2/DTWYhLqdKMFTPcx1us3EeAFJYS+ho2EAsxJI6o3kPdESzjhTOtksbetjzB2rWXyRCaRtpMsJXKTk5IhWJCi6/EsdAcy//HOUsUimWZHjgbZnRn5rOo5E4e324lIrzWPS9B9pETGm/jRsGmUso3FNfxBwEOi9Lp14InmpmiMOPXcAOAhPltizrrA/AYKrvzWdVQEMsylbkXYnEVTNKHx526x2dVl7sa8rrBjzpOUxnztsmfUlV4zsetCoubPg6beOQQ05wuiOm6omrxJ7RPrDB+Fi93wkzJEFjUASb/ogy9vYhTaUez8OCUzPLmPQDRwmY9fsnIl2nBpcZFsTXAu8nhPvrhezNYy7NfTxvglHPYuOqGRp+1AN8LNO6jHpGdd6rW1bWdAqjacwBsvdl6lNZeFSxcVzL67iViURiauMRQUnt/uJl6qMYotw57y5jhaitigmLl+J6k1Ab8shl3Vm8WCBab7FLDyrc7giobHZjYhcSOdJw="
@@ -36,9 +43,9 @@ script:
   - ./tools/travis/build.sh
 
 deploy:
-  # deploy latest
+  # deploy nightly
   - provider: script
-    script: ./tools/travis/deploy.sh openwhisk alarmprovider latest
+    script: ./tools/travis/deploy.sh openwhisk alarmprovider nightly
     on:
       branch: master
   # deploy tag

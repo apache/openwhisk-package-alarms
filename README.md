@@ -17,10 +17,10 @@
 #
 -->
 
-# Using the Alarm package
+# Apache OpenWhisk Alarm Package
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
-[![Build Status](https://travis-ci.org/apache/incubator-openwhisk-package-alarms.svg?branch=master)](https://travis-ci.org/apache/incubator-openwhisk-package-alarms)
+[![Build Status](https://travis-ci.org/apache/openwhisk-package-alarms.svg?branch=master)](https://travis-ci.org/apache/openwhisk-package-alarms)
 
 The `/whisk.system/alarms` package can be used to fire a trigger at a specified frequency. Alarms are useful for setting up recurring jobs or tasks, such as invoking a system backup action every hour.
 
@@ -105,6 +105,8 @@ For more information, see: http://crontab.org. The following strings are example
 
 - `trigger_payload` (*optional*): The value of this parameter becomes the content of the Trigger every time the Trigger is fired.
 
+- `timezone` (*optional*): This will modify the actual time relative to the specified timezone. If the timezone is invalid, an error is thrown. You can check all timezones available at the Moment Timezone Website (http://momentjs.com/timezone/docs/#/data-loading/getting-zone-names/).
+
 - `startDate` (*optional*): The date when the Trigger will start running. The Trigger fires based on the schedule specified by the cron parameter.
 
 - `stopDate` (*optional*): The date when the Trigger will stop running. Triggers are no longer fired once this date is reached.
@@ -124,3 +126,7 @@ January 1, 2019, 00:00:00 UTC and will stop firing January 31, 2019, 23:59:00 UT
   ```
 
  **Note**: The parameter `maxTriggers` is deprecated and will be removed soon.  To stop the Trigger, use the `stopDate` parameter.
+
+# Building from Source
+
+To build this package from source, execute the command `./gradlew distDocker`

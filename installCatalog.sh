@@ -80,11 +80,11 @@ if [ -e alarmFeed.zip ]; then
 fi
 
 cp -f alarmFeed_package.json package.json
-zip -r alarmFeed.zip lib package.json alarm.js
+zip -r alarmFeed.zip lib package.json alarm.js -q
 
 $WSK_CLI -i --apihost "$EDGEHOST" action update --kind "$ACTION_RUNTIME_VERSION" --auth "$AUTH" alarms/alarm "$PACKAGE_HOME/action/alarmFeed.zip" \
      -a description 'Fire trigger when alarm occurs' \
-     -a parameters '[ {"name":"cron", "required":true}, {"name":"startDate", "required":false}, {"name":"stopDate", "required":false} ]' \
+     -a parameters '[ {"name":"cron", "required":true}, {"name":"timezone", "required":false}, {"name":"startDate", "required":false}, {"name":"stopDate", "required":false} ]' \
      -a feed true
 
 $WSK_CLI -i --apihost "$EDGEHOST" action update --kind "$ACTION_RUNTIME_VERSION" --auth "$AUTH" alarms/once "$PACKAGE_HOME/action/alarmFeed.zip" \
@@ -122,7 +122,7 @@ if [ -e alarmWebAction.zip ]; then
     rm -rf alarmWebAction.zip
 fi
 
-zip -r alarmWebAction.zip lib package.json alarmWebAction.js node_modules
+zip -r alarmWebAction.zip lib package.json alarmWebAction.js node_modules -q
 
 $WSK_CLI -i --apihost "$EDGEHOST" action update --kind "$ACTION_RUNTIME_VERSION" --auth "$AUTH" alarmsWeb/alarmWebAction "$PACKAGE_HOME/action/alarmWebAction.zip" \
     -a description 'Create/Delete a trigger in alarms provider Database' \

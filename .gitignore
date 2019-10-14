@@ -5,6 +5,7 @@ node_modules/
 .vscode
 action/*.zip
 action/package.json
+package-lock.json
 
 # Eclipse
 bin/

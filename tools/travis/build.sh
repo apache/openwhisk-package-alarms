@@ -22,13 +22,14 @@ set -e
 
 SCRIPTDIR=$(cd $(dirname "$0") && pwd)
 ROOTDIR="$SCRIPTDIR/../.."
-UTILDIR="$ROOTDIR/../incubator-openwhisk-utilities"
+UTILDIR="$ROOTDIR/../openwhisk-utilities"
 
 # run scancode
 cd $UTILDIR
 scancode/scanCode.py --config scancode/ASF-Release.cfg $ROOTDIR
 
 # jshint support
+sudo apt-get -y update
 sudo apt-get -y install nodejs npm
 sudo npm install -g jshint
 
