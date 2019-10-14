@@ -2,7 +2,10 @@
   "name": "alarmWebAction",
   "version": "1.0.0",
   "main": "alarmWebAction.js",
-  "dependencies" : {
-    "cron": "1.7.0"
+  "dependencies": {
+    "cron": "1.7.0",
+    "documentdb": "^1.14.5",
+    "moment": "^2.12.0",
+    "nano": "6.4.2"
   }
 }

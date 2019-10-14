@@ -19,10 +19,11 @@ function getOpenWhiskConfig(triggerData) {
     return {ignore_certs: true, namespace: triggerData.namespace, api_key: triggerData.apikey};
 }
 
-function constructTriggerID(triggerData) {
-    var triggerID = `${triggerData.namespace}/${triggerData.name}`;
+function constructTriggerID(triggerData, supportsSlash) {
+    var sep = supportsSlash ? '/' : '|';
+    var triggerID = `${triggerData.namespace}${sep}${triggerData.name}`;
     if (triggerData.apikey) {
-        triggerID = `${triggerData.apikey}/${triggerID}`;
+        triggerID = `${triggerData.apikey}${sep}${triggerID}`;
     }
     return triggerID;
 }
