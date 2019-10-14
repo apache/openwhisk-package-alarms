@@ -34,7 +34,7 @@ function main(params) {
         additionalData: common.constructObject(params.additionalData),
     };
     var triggerID = new Database().constructTriggerID(getDBConfig(params), triggerData);
-    
+
     var workers = params.workers instanceof Array ? params.workers : [];
     var deleteAfterFireArray = ['false', 'true', 'rules'];
     var db;
@@ -149,7 +149,7 @@ function main(params) {
                 return getDatabase(getDBConfig(params));
             })
             .then((database) => {
-                db = database
+                db = database;
                 return db.getWorkerID(workers);
             })
             .then((worker) => {
@@ -178,7 +178,7 @@ function main(params) {
                 return getDatabase(getDBConfig(params));
             })
             .then((database) => {
-                db = database
+                db = database;
                 return db.getTrigger(triggerID);
             })
             .then(doc => {
@@ -231,7 +231,7 @@ function main(params) {
                 return getDatabase(getDBConfig(params));
             })
             .then((database) => {
-                db = database
+                db = database;
                 return db.getTrigger(triggerID);
             })
             .then(trigger => {
@@ -352,7 +352,7 @@ function main(params) {
                 return getDatabase(getDBConfig(params));
             })
             .then((database) => {
-                db = database
+                db = database;
                 return db.getTrigger(triggerID);
             })
             .then(trigger => {

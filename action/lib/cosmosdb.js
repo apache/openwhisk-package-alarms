@@ -1,28 +1,29 @@
 /*
-* Licensed to the Apache Software Foundation (ASF) under one or more
-* contributor license agreements.  See the NOTICE file distributed with
-* this work for additional information regarding copyright ownership.
-* The ASF licenses this file to You under the Apache License, Version 2.0
-* (the "License"); you may not use this file except in compliance with
-* the License.  You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 const common = require('./common');
 
 module.exports = function(endpoint, masterKey) {
     var DocumentClient = require('documentdb').DocumentClient;
     var client = new DocumentClient(endpoint, {masterKey: masterKey});
-    
+
     this.client = client;
     var utilsDB = this;
-    
+
     this.init = function(databaseName, collectionName) {
         console.log("cosmosdb.init");
         let querySpec = {
@@ -44,7 +45,7 @@ module.exports = function(endpoint, masterKey) {
             });
         });
     };
-    
+
     //get collection in cosmosdb terminology
     this.getDatabase = function(collectionName) {
         console.log(`cosmosdb.getDatabase:`, collectionName);
@@ -70,12 +71,12 @@ module.exports = function(endpoint, masterKey) {
                         utilsDB.collectionLink = results[0]._self;
                         resolve(results);
                     }
-                    
+
                 }
             });
         });
     };
-    
+
     //create collection in cosmosdb terminology
     this.createDatabase = function(collectionName) {
         console.log(`cosmosdb.createDatabase:`,collectionName);
@@ -93,24 +94,24 @@ module.exports = function(endpoint, masterKey) {
             });
         });
     };
-    
+
     this.getWorkerID = function(availabeWorkers) {
-        
+
         return new Promise((resolve, reject) => {
             var workerID = availabeWorkers[0] || 'worker0';
             resolve(workerID);
         });
     };
-    
+
     this.createTrigger = function(triggerID, newTrigger) {
         console.log(`cosmosdb.createTrigger:`, triggerID);
         if(!newTrigger.id) {
             console.log("add id to doc");
             newTrigger.id = triggerID;
         }
-        
+
         return new Promise(function(resolve, reject) {
-            
+
             client.createDocument(utilsDB.collectionLink, newTrigger, function(err, document) {
                 if(err) {
                     console.error(`cosmosdb.createTrigger failed:`, err);
@@ -122,7 +123,7 @@ module.exports = function(endpoint, masterKey) {
             });
         });
     };
-    
+
     this.getTrigger = function(triggerID, retry = true) {
         console.log(`cosmosdb.getTrigger:`, triggerID);
         return new Promise(function(resolve, reject) {
@@ -130,7 +131,7 @@ module.exports = function(endpoint, masterKey) {
                 query: 'SELECT * FROM root r WHERE r.id = @id',
                 parameters: [{ name: '@id', value: triggerID }]
             };
-            
+
             client.queryDocuments(utilsDB.collectionLink, querySpec).toArray(function(err, results) {
                 if (err) {
                     if (retry) {
@@ -145,7 +146,7 @@ module.exports = function(endpoint, masterKey) {
                         reject(common.sendError(err.statusCode, 'could not find trigger ' + triggerID + ' in the database'));
                     }
                 }
-                
+
                 if(results.length == 0)
                 resolve();
                 else {
@@ -155,7 +156,7 @@ module.exports = function(endpoint, masterKey) {
             });
         });
     };
-    
+
     this.updateTrigger = function(triggerID, trigger, params, retryCount) {
         console.log(`cosmosdb.updateTrigger:`, triggerID);
         if (retryCount === 0) {
@@ -168,7 +169,7 @@ module.exports = function(endpoint, masterKey) {
             };
             trigger.status = status;
         }
-        
+
         return new Promise(function(resolve, reject) {
             utilsDB.getTrigger(triggerID)
             .then((doc) => {
@@ -197,7 +198,7 @@ module.exports = function(endpoint, masterKey) {
             });
         });
     };
-    
+
     this.disableTrigger = function(triggerID, trigger, retryCount, crudMessage) {
         console.log(`cosmosdb.disableTrigger:`, triggerID);
         if (retryCount === 0) {
@@ -205,7 +206,7 @@ module.exports = function(endpoint, masterKey) {
             if (trigger.status && trigger.status.active === false) {
                 return Promise.resolve(triggerID);
             }
-            
+
             var message = `Automatically disabled trigger while ${crudMessage}`;
             var status = {
                 'active': false,
@@ -214,10 +215,10 @@ module.exports = function(endpoint, masterKey) {
             };
             trigger.status = status;
         }
-        
+
         return utilsDB.updateTrigger(triggerID, trigger, {}, retryCount);
     };
-    
+
     this.deleteTrigger = function(triggerID) {
         console.log(`cosmosdb.deleteTrigger`, triggerID);
         return new Promise(function(resolve, reject) {

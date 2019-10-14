@@ -323,7 +323,7 @@ module.exports = function(logger, triggerDB, redisClient) {
                                 logger.error(method, 'trigger', triggerIdentifier, 'has been disabled due to status code:', response.statusCode);
                             }
                             else {
-                                logger.info(method, 'will create trigger')
+                                logger.info(method, 'will create trigger');
                                 createTrigger(triggerIdentifier, doc)
                                 .then(cachedTrigger => {
                                     self.triggers[triggerIdentifier] = cachedTrigger;
@@ -350,7 +350,7 @@ module.exports = function(logger, triggerDB, redisClient) {
                 logger.error(method, 'could not get latest state from database', err);
             });
     };
-    
+
     function setupFollow(seq) {
         var method = 'setupFollow';
 
