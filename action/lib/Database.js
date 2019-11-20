@@ -70,7 +70,19 @@ module.exports = function(dbURL, dbName) {
                     resolve();
                 }
                 else {
-                    reject(common.sendError(err.statusCode, 'error creating alarm trigger.', err.message));
+                    const errorMsg = 'error creating alarm trigger.';
+                    if (err.statusCode === 409) {
+                        //trigger already exists so update it
+                        utilsDB.getTrigger(triggerID)
+                        .then(trigger => utilsDB.disableTrigger(triggerID, trigger, 0, 'updating'))
+                        .then(() => utilsDB.getTrigger(triggerID))
+                        .then(trigger => utilsDB.updateTrigger(triggerID, newTrigger, {_rev: trigger._rev}, 0))
+                        .then(() => resolve())
+                        .catch(err => reject(common.sendError(err.statusCode, errorMsg, err.message)));
+                    }
+                    else {
+                        reject(common.sendError(err.statusCode, errorMsg, err.message));
+                    }
                 }
             });
         });
