@@ -85,6 +85,7 @@ module.exports = function(logger, newTrigger) {
         }
     };
 
+    // Convert string to integer in [0, 60)
     function hashName(name) {
         var hash = 0;
 
