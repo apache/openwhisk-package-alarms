@@ -94,7 +94,7 @@ module.exports = function(logger, newTrigger) {
             hash = ((hash << 5) - hash) + char;
         }
         hash %= 60;
-        hash = hash < 0 ? -hash : hash;
+        hash = Math.abs(hash);
 
         return hash.toString(10);
     }
