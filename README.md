@@ -91,7 +91,7 @@ The following is an example of creating a trigger that will be fired once on Dec
 The `/whisk.system/alarms/alarm` feed configures the Alarm service to fire a Trigger event at a specified frequency. The parameters are as follows:
 
 - `cron` (*required*): A string, based on the UNIX crontab syntax that indicates when to fire the Trigger in Coordinated Universal Time (UTC). The string is a sequence of five fields that are separated by spaces: `X X X X X`.
-For more information, see: http://crontab.org. The following strings are examples that use varying duration's of frequency.
+  For more information, see: http://crontab.org. The following strings are examples that use varying duration's of frequency.
 
   - `* * * * *`: The Trigger fires at the top of every minute.
   - `0 * * * *`: The Trigger fires at the top of every hour.
@@ -101,6 +101,7 @@ For more information, see: http://crontab.org. The following strings are example
   **Note**: The parameter `cron` supports five or six fields.  Not all OpenWhisk vendors may support 6 fields so please check their documentation for support.
   For more details about using this custom cron syntax, see: https://github.com/ncb000gt/node-cron.
   Here is an example using six fields notation:
+
     - `*/30 * * * * *`: every thirty seconds.
 
 - `trigger_payload` (*optional*): The value of this parameter becomes the content of the Trigger every time the Trigger is fired.
@@ -126,6 +127,15 @@ January 1, 2019, 00:00:00 UTC and will stop firing January 31, 2019, 23:59:00 UT
   ```
 
  **Note**: The parameter `maxTriggers` is deprecated and will be removed soon.  To stop the Trigger, use the `stopDate` parameter.
+
+- `strict` (*optional*): A boolean value that decides to add a few seconds to the Trigger. This work with only five-field cron alarms.
+
+  - If it's true, the Trigger will fire at the top of the hour/minute (\**:**:00).
+  - Otherwise, the Trigger will fire after the specific seconds (\**:**:00-59).
+
+The delay is determined by the hash value of the Trigger's name, so it keeps the same interval before and after the (re)deployment.
+
+**Note** This option can be helpful to avoid thundering herds when the second-unit errors are not critical.
 
 # Building from Source
 
