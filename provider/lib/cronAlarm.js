@@ -22,6 +22,7 @@ var constants = require('./constants.js');
 module.exports = function(logger, newTrigger) {
 
     var maxTriggers = newTrigger.maxTriggers || constants.DEFAULT_MAX_TRIGGERS;
+    var delayLimit = validateLimit(process.env.ALARM_DELAY_LIMIT) || 0;
 
     var cachedTrigger = {
         apikey: newTrigger.apikey,
@@ -85,7 +86,7 @@ module.exports = function(logger, newTrigger) {
         }
     };
 
-    // Convert string to integer in [0, 60)
+    // Convert string to integer in [0, delayLimit)
     function hashName(name) {
         var hash = 0;
 
@@ -93,7 +94,7 @@ module.exports = function(logger, newTrigger) {
             var char = name.charCodeAt(i);
             hash = ((hash << 5) - hash) + char;
         }
-        hash %= 60;
+        hash %= delayLimit + 1;
         hash = Math.abs(hash);
 
         return hash.toString(10);
@@ -102,11 +103,21 @@ module.exports = function(logger, newTrigger) {
     function distributeCron(trigger) {
         var cronFields = (trigger.cron + '').trim().split(/\s+/);
 
-        if (trigger.strict === false && cronFields.length === 5) {
+        if (trigger.strict === false && cronFields.length === 5 && delayLimit === 0) {
             return cronFields.splice(0, 0, hashName(trigger.name)).join(' ');
         }
 
         return trigger.cron;
+    }
+
+    function validateLimit(limit) {
+        if (isNaN(limit)) {
+            return 0;
+        }
+        if (limit < 0 || limit >= 60) {
+            return 0;
+        }
+        return limit;
     }
 
 };
