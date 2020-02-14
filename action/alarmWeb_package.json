@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "main": "alarmWebAction.js",
   "dependencies" : {
-    "cron": "1.7.0"
+    "cron": "1.7.0",
+    "needle": "2.3.2",
+    "nano": "8.1.0",
+    "moment": "2.24.0"
   }
 }

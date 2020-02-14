@@ -1,5 +1,9 @@
 {
   "name": "alarmFeed",
   "version": "1.0.0",
-  "main": "alarm.js"
+  "main": "alarm.js",
+  "dependencies" : {
+    "nano": "8.1.0",
+    "needle": "2.3.2"
+  }
 }
