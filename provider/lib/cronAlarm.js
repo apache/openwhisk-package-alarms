@@ -22,7 +22,7 @@ var constants = require('./constants.js');
 module.exports = function(logger, newTrigger) {
 
     var maxTriggers = newTrigger.maxTriggers || constants.DEFAULT_MAX_TRIGGERS;
-    var delayLimit = validateLimit(process.env.ALARM_DELAY_LIMIT) || 0;
+    var delayLimit = validateLimit(parseInt(process.env.ALARM_DELAY_LIMIT)) || 0;
 
     var cachedTrigger = {
         apikey: newTrigger.apikey,
@@ -103,8 +103,10 @@ module.exports = function(logger, newTrigger) {
     function distributeCron(trigger) {
         var cronFields = (trigger.cron + '').trim().split(/\s+/);
 
-        if (trigger.strict === false && cronFields.length === 5 && delayLimit === 0) {
-            return cronFields.splice(0, 0, hashName(trigger.name)).join(' ');
+        var cronFields = (trigger.cron + '').trim().split(/\s+/);
+        if (trigger.strict !== 'true' && cronFields.length === 5 && delayLimit !== 0) {
+            var newCron = [hashName(trigger.name), ...cronFields].join(' ');
+            return newCron;
         }
 
         return trigger.cron;
