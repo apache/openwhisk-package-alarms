@@ -15,28 +15,20 @@
  * limitations under the License.
  */
 
-const request = require('request');
+const needle = require('needle');
 const openwhisk = require('openwhisk');
 const config = require('./config');
 
 function requestHelper(url, input, method) {
-
     return new Promise(function(resolve, reject) {
 
-        var options = {
-            method : method,
-            url : url,
+        const options = {
             json: true,
             rejectUnauthorized: false
         };
 
-        if (method === 'get') {
-            options.qs = input;
-        } else {
-            options.body = input;
-        }
-
-        request(options, function(error, response, body) {
+        // needle takes e.g. 'put' not 'PUT'
+        needle.request(method.toLowerCase(), url, input, options, function(error, response, body) {
 
             if (!error && response.statusCode === 200) {
                 resolve(body);
