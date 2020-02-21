@@ -101,7 +101,7 @@ module.exports = function(logger, newTrigger) {
     }
 
     function distributeCron(trigger) {
-        var method = "distributeCronAlarm"
+        var method = "distributeCronAlarm";
 
         var cronFields = (trigger.cron + '').trim().split(/\s+/);
         if (trigger.strict !== 'true' && cronFields.length === 5 && delayLimit !== 0) {
