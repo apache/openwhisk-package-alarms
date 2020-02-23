@@ -21,8 +21,8 @@ const common = require('./lib/common');
 const Database = require('./lib/Database');
 const config = require('./lib/config');
 
-function main(params) {
 
+function main(params) {
     if (!params.triggerName) {
         return common.sendError(400, 'no trigger name parameter was provided');
     }
@@ -147,7 +147,7 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                db = getDatabase(getDBConfig(params));
                 return db.getWorkerID(workers);
             })
             .then((worker) => {
@@ -173,7 +173,7 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                db = getDatabase(getDBConfig(params));
                 return db.getTrigger(triggerID);
             })
             .then(doc => {
@@ -223,7 +223,7 @@ function main(params) {
 
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                db = getDatabase(getDBConfig(params));
                 return db.getTrigger(triggerID);
             })
             .then(trigger => {
@@ -341,7 +341,7 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, true)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                db = getDatabase(getDBConfig(params));
                 return db.getTrigger(triggerID);
             })
             .then(trigger => {
@@ -390,6 +390,32 @@ function hasSecondsGranularity(cron) {
 
     var fields = (cron + '').trim().split(/\s+/);
     return fields.length > 5 && fields[fields.length - 6] !== '0';
+}
+
+function getDatabase(config) {
+    var db = new Database();
+    db.initDB(config)
+    .then((res) =>
+    {
+        return db;
+    })
+    .catch((err) => {
+        throw new Error(err);
+    });
+}
+
+function getDBConfig(params) {
+    var config = {};
+    if(params) {
+        config = {
+            dburl: params.DB_URL,
+            dbname: params.DB_NAME,
+            type: params.DB_TYPE,
+            masterkey: params.COSMOSDB_MASTERKEY,
+            rootdb: params.COSMOSDB_ROOT_DB
+        };
+    }
+    return config;
 }
 
 exports.main = main;
