@@ -103,6 +103,7 @@ function main(params) {
                     }
                     newTrigger.cron = params.cron;
                     newTrigger.timezone = params.timezone;
+                    newTrigger.strict = params.strict === 'true';
                 } catch(ex) {
                     var message = ex.message !== 'Invalid timezone.' ? `cron pattern '${params.cron}' is not valid` : ex.message;
                     return common.sendError(400, message);

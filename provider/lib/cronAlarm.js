@@ -22,6 +22,7 @@ var constants = require('./constants.js');
 module.exports = function(logger, newTrigger) {
 
     var maxTriggers = newTrigger.maxTriggers || constants.DEFAULT_MAX_TRIGGERS;
+    var delayLimit = validateLimit(parseInt(process.env.ALARM_DELAY_LIMIT)) || 0;
 
     var cachedTrigger = {
         apikey: newTrigger.apikey,
@@ -42,7 +43,7 @@ module.exports = function(logger, newTrigger) {
         try {
             return new Promise(function(resolve, reject) {
 
-                var cronHandle = new CronJob(newTrigger.cron, callback, undefined, false, newTrigger.timezone);
+                var cronHandle = new CronJob(distributeCron(newTrigger), callback, undefined, false, newTrigger.timezone);
 
                 if (newTrigger.stopDate) {
                     cachedTrigger.stopDate = newTrigger.stopDate;
@@ -84,5 +85,42 @@ module.exports = function(logger, newTrigger) {
             return Promise.reject(err);
         }
     };
+
+    // Convert string to integer in [0, delayLimit)
+    function hashName(name) {
+        var hash = 0;
+
+        for (var i = 0; i < name.length; i++) {
+            var char = name.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+        }
+        hash %= delayLimit + 1;
+        hash = Math.abs(hash);
+
+        return hash.toString(10);
+    }
+
+    function distributeCron(trigger) {
+        var method = "distributeCronAlarm";
+
+        var cronFields = (trigger.cron + '').trim().split(/\s+/);
+        if (trigger.strict !== 'true' && cronFields.length === 5 && delayLimit !== 0) {
+            var newCron = [hashName(trigger.name), ...cronFields].join(' ');
+            logger.info(method, trigger.triggerID, 'is converted to', '"' + newCron + '"');
+            return newCron;
+        }
+
+        return trigger.cron;
+    }
+
+    function validateLimit(limit) {
+        if (isNaN(limit)) {
+            return 0;
+        }
+        if (limit < 0 || limit >= 60) {
+            return 0;
+        }
+        return limit;
+    }
 
 };

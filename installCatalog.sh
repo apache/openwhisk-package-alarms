@@ -84,7 +84,7 @@ zip -r alarmFeed.zip lib package.json alarm.js -q
 
 $WSK_CLI -i --apihost "$EDGEHOST" action update --kind "$ACTION_RUNTIME_VERSION" --auth "$AUTH" alarms/alarm "$PACKAGE_HOME/action/alarmFeed.zip" \
      -a description 'Fire trigger when alarm occurs' \
-     -a parameters '[ {"name":"cron", "required":true}, {"name":"timezone", "required":false}, {"name":"startDate", "required":false}, {"name":"stopDate", "required":false} ]' \
+     -a parameters '[ {"name":"cron", "required":true}, {"name":"timezone", "required":false}, {"name":"startDate", "required":false}, {"name":"stopDate", "required":false}, {"name":"strict", "required":false} ]' \
      -a feed true
 
 $WSK_CLI -i --apihost "$EDGEHOST" action update --kind "$ACTION_RUNTIME_VERSION" --auth "$AUTH" alarms/once "$PACKAGE_HOME/action/alarmFeed.zip" \
