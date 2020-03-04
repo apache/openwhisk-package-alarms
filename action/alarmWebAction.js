@@ -148,7 +148,7 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                db = new Database(params.DB_URL, params.DB_NAME, params.DB_USERNAME, params.DB_PASSWORD);
                 return db.getWorkerID(workers);
             })
             .then((worker) => {
@@ -174,7 +174,7 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                db = new Database(params.DB_URL, params.DB_NAME, params.DB_USERNAME, params.DB_PASSWORD);
                 return db.getTrigger(triggerID);
             })
             .then(doc => {
@@ -224,7 +224,7 @@ function main(params) {
 
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                db = new Database(params.DB_URL, params.DB_NAME, params.DB_USERNAME, params.DB_PASSWORD);
                 return db.getTrigger(triggerID);
             })
             .then(trigger => {
@@ -342,7 +342,7 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerData, true)
             .then(() => {
-                db = new Database(params.DB_URL, params.DB_NAME);
+                db = new Database(params.DB_URL, params.DB_NAME, params.DB_USERNAME, params.DB_PASSWORD);
                 return db.getTrigger(triggerID);
             })
             .then(trigger => {

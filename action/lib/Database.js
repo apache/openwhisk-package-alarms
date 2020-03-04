@@ -18,8 +18,8 @@
 const common = require('./common');
 
 // constructor for DB object - a thin, promise-loving wrapper around nano
-module.exports = function(dbURL, dbName) {
-    var nano = require('nano')(dbURL);
+module.exports = function(dbURL, dbName, dbUsername, dbPassword) {
+    var nano = require('nano')(common.createUrl(dbURL, dbUsername, dbPassword));
     this.db = nano.db.use(dbName);
     var utilsDB = this;
 

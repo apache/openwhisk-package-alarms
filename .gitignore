@@ -7,6 +7,12 @@ action/*.zip
 action/package.json
 package-lock.json
 
+# IntelliJ
+.idea
+*.class
+*.iml
+out/
+
 # Eclipse
 bin/
 **/.project

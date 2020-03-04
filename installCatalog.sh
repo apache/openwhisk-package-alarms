@@ -20,8 +20,12 @@
 # use the command line interface to install standard actions deployed
 # automatically
 #
-# To run this command
-# ./installCatalog.sh <authkey> <edgehost> <dburl> <dbprefix> <apihost> <workers>
+# If the authentication information in your database contains special characters that require encoding,
+# run the script in the following format:
+# ./installCatalog.sh <authkey> <edgehost> <apihost> <workers> <dburl> <dbprefix> <dbusername> <dbpassword>
+#
+# Otherwise, run it in the following format:
+# ./installCatalog.sh <authkey> <edgehost> <apihost> <workers> <dburl> <dbprefix>
 
 set -e
 set -x
@@ -29,16 +33,25 @@ set -x
 : ${OPENWHISK_HOME:?"OPENWHISK_HOME must be set and non-empty"}
 WSK_CLI="$OPENWHISK_HOME/bin/wsk"
 
-if [ $# -eq 0 ]; then
-    echo "Usage: ./installCatalog.sh <authkey> <edgehost> <dburl> <dbprefix> <apihost> <workers>"
+
+if [ $# -ne 6 ] && [ $# -ne 8 ]; then
+    echo "
+If the authentication information in your database contains special characters that require encoding,
+run the script in the following format:
+./installCatalog.sh <authkey> <edgehost> <apihost> <workers> <dburl> <dbprefix> <dbusername> <dbpassword>
+ Otherwise, run it in the following format:
+./installCatalog.sh <authkey> <edgehost> <apihost> <workers> <dburl> <dbprefix>"
+    exit 1
 fi
 
 AUTH="$1"
 EDGEHOST="$2"
-DB_URL="$3"
-DB_NAME="${4}alarmservice"
-APIHOST="$5"
-WORKERS="$6"
+APIHOST="$3"
+WORKERS="$4"
+DB_URL="$5"
+DB_NAME="${6}alarmservice"
+DB_USERNAME="$7"
+DB_PASSWORD="$8"
 LIMIT_CRON_FIELDS="${LIMIT_CRON_FIELDS}"
 ACTION_RUNTIME_VERSION=${ACTION_RUNTIME_VERSION:="nodejs:10"}
 
@@ -103,6 +116,11 @@ COMMAND=" -i --apihost $EDGEHOST package update --auth $AUTH --shared no alarmsW
     -p DB_URL $DB_URL \
     -p DB_NAME $DB_NAME \
     -p apihost $APIHOST"
+
+if [ -n "$DB_USERNAME" ] && [ -n "$DB_PASSWORD" ]; then
+    COMMAND+=" -p DB_USERNAME $DB_USERNAME"
+    COMMAND+=" -p DB_PASSWORD $DB_PASSWORD"
+fi
 
 if [ -n "$WORKERS" ]; then
     COMMAND+=" -p workers $WORKERS"
