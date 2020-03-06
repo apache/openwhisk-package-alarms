@@ -104,7 +104,7 @@ module.exports = function(logger, newTrigger) {
         var method = "distributeCronAlarm";
 
         var cronFields = (trigger.cron + '').trim().split(/\s+/);
-        if (trigger.strict !== 'true' && cronFields.length === 5 && delayLimit !== 0) {
+        if (!trigger.strict && cronFields.length === 5 && delayLimit !== 0) {
             var newCron = [hashName(trigger.name), ...cronFields].join(' ');
             logger.info(method, trigger.triggerID, 'is converted to', '"' + newCron + '"');
             return newCron;
