@@ -23,6 +23,7 @@ module.exports = function(logger, newTrigger) {
 
     var maxTriggers = newTrigger.maxTriggers || constants.DEFAULT_MAX_TRIGGERS;
     var delayLimit = validateLimit(parseInt(process.env.ALARM_DELAY_LIMIT)) || 0;
+    var delayDefaultStrict = process.env.ALARM_DELAY_DEFAULT_STRICT || false;
 
     var cachedTrigger = {
         apikey: newTrigger.apikey,
@@ -104,7 +105,7 @@ module.exports = function(logger, newTrigger) {
         var method = "distributeCronAlarm";
 
         var cronFields = (trigger.cron + '').trim().split(/\s+/);
-        if (!trigger.strict && cronFields.length === 5 && delayLimit !== 0) {
+        if (!isStrict(trigger.strict) && cronFields.length === 5 && delayLimit !== 0) {
             var newCron = [hashName(trigger.name), ...cronFields].join(' ');
             logger.info(method, trigger.triggerID, 'is converted to', '"' + newCron + '"');
             return newCron;
@@ -121,6 +122,26 @@ module.exports = function(logger, newTrigger) {
             return 0;
         }
         return limit;
+    }
+
+    function isStrict(strict) {
+        /**
+         * If the strict variable is not passed from alarmWebAction(User doesn't define strict value),
+         * then the ALARM_DELAY_DEFAULT_STRICT environment variable value is used.
+         */
+        if(strict === undefined || strict === null) {
+            return delayDefaultStrict;
+        }
+
+        /**
+         * "true"(string)   -> true
+         * "false"(string)  -> false
+         * "True"(string)   -> true
+         * "False"(string)  -> false
+         * true(boolean)    -> true
+         * false(boolean)   -> false
+         */
+        return String(strict).toLowerCase() === "true";
     }
 
 };
