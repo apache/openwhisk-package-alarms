@@ -132,6 +132,8 @@ January 1, 2019, 00:00:00 UTC and will stop firing January 31, 2019, 23:59:00 UT
 
   - If it's true, the Trigger will fire at the top of the hour/minute (\**:**:00).
   - Otherwise, the Trigger will fire after the specific seconds (\**:**:00-59).
+  - If you do not set this value, it is set to the default chosen by the operator.
+  - Optionally, string values, `"true"` and `"false"` are also recognized as boolean values.
 
 The delay is determined by the hash value of the Trigger's name, so it keeps the same interval before and after the (re)deployment.
 
