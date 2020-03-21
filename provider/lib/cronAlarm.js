@@ -23,7 +23,7 @@ module.exports = function(logger, newTrigger) {
 
     var maxTriggers = newTrigger.maxTriggers || constants.DEFAULT_MAX_TRIGGERS;
     var delayLimit = validateLimit(parseInt(process.env.ALARM_DELAY_LIMIT)) || 0;
-    var delayDefaultStrict = process.env.ALARM_DELAY_DEFAULT_STRICT || false;
+    var delayDefaultStrict = process.env.ALARM_DELAY_DEFAULT_STRICT === "true";
 
     var cachedTrigger = {
         apikey: newTrigger.apikey,
