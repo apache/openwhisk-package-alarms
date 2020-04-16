@@ -192,7 +192,7 @@ function main(params) {
                     }
                 };
                 var strict = true; // strict is default to true
-                if (doc.strict) {
+                if (doc.strict !== undefined) {
                     strict = doc.strict;
                 }
                 body.config.strict = strict;
