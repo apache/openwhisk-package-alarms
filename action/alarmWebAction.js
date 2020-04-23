@@ -191,6 +191,11 @@ function main(params) {
                         reason: doc.status.reason
                     }
                 };
+                var strict = true; // strict is default to true
+                if (doc.strict !== undefined) {
+                    strict = doc.strict;
+                }
+                body.config.strict = strict;
                 if (doc.date) {
                     body.config.date = doc.date;
                     body.config.deleteAfterFire = doc.deleteAfterFire;
