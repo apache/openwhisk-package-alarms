@@ -1,9 +1,11 @@
 {
-  "name": "alarms-trigger",
-  "version": "1.0.0",
-  "description": "A service to trigger openwhisk triggers based on cron notation",
+  "name": "@openwhisk/alarms-trigger",
+  "version": "2.1.0",
+  "description": "A service to trigger OpenWhisk triggers based on cron notation",
   "main": "app.js",
-  "license": "ISC",
+  "license": "Apache-2.0",
+  "author": "Apache Software Foundation",
+  "repository": "github:apache/openwhisk-package-alarms",
   "dependencies": {
     "body-parser": "^1.15.0",
     "cron": "1.7.0",
