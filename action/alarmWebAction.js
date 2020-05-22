@@ -191,7 +191,7 @@ function main(params) {
                         reason: doc.status.reason
                     }
                 };
-                var strict = true; // strict is default to true
+                var strict = process.env.ALARM_DELAY_DEFAULT_STRICT === "true";
                 if (doc.strict !== undefined) {
                     strict = doc.strict;
                 }
