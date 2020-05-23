@@ -293,6 +293,9 @@ function main(params) {
                                 updatedParams.timezone = params.timezone;
                             }
                         }
+                        if(params.hasOwnProperty("strict")) {
+                            updatedParams.strict = params.strict;
+                        }
                     }
 
                     if (params.startDate) {
