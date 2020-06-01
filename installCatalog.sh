@@ -93,6 +93,8 @@ if [ -e alarmFeed.zip ]; then
 fi
 
 cp -f alarmFeed_package.json package.json
+npm install
+rm -rf alarmFeed.zip
 zip -r alarmFeed.zip lib package.json alarm.js -q
 
 $WSK_CLI -i --apihost "$EDGEHOST" action update --kind "$ACTION_RUNTIME_VERSION" --auth "$AUTH" alarms/alarm "$PACKAGE_HOME/action/alarmFeed.zip" \
@@ -135,11 +137,7 @@ $WSK_CLI $COMMAND
 # make alarmWebAction.zip
 cp -f alarmWeb_package.json package.json
 npm install
-
-if [ -e alarmWebAction.zip ]; then
-    rm -rf alarmWebAction.zip
-fi
-
+rm -rf alarmWebAction.zip
 zip -r alarmWebAction.zip lib package.json alarmWebAction.js node_modules -q
 
 $WSK_CLI -i --apihost "$EDGEHOST" action update --kind "$ACTION_RUNTIME_VERSION" --auth "$AUTH" alarmsWeb/alarmWebAction "$PACKAGE_HOME/action/alarmWebAction.zip" \
