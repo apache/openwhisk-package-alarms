@@ -40,7 +40,7 @@ function main(msg) {
 
     var endpoint = msg.apihost;
     var webparams = common.createWebParams(msg);
-    var massagedAPIHost = addHTTPS(endpoint)
+    var massagedAPIHost = addHTTPS(endpoint);
 
     var url = `${massagedAPIHost}/api/v1/web/whisk.system/alarmsWeb/alarmWebAction.http`;
 
