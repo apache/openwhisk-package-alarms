@@ -17,6 +17,13 @@
 
 const common = require('./lib/common');
 
+function addHTTPS(url) {
+    if (!/^(?:f|ht)tps?\:\/\//.test(url)) {
+        url = "https://" + url;
+    }
+    return url;
+}
+
 function main(msg) {
 
     let eventMap = {
@@ -33,8 +40,9 @@ function main(msg) {
 
     var endpoint = msg.apihost;
     var webparams = common.createWebParams(msg);
+    var massagedAPIHost = addHTTPS(endpoint)
 
-    var url = `https://${endpoint}/api/v1/web/whisk.system/alarmsWeb/alarmWebAction.http`;
+    var url = `${massagedAPIHost}/api/v1/web/whisk.system/alarmsWeb/alarmWebAction.http`;
 
     if (lifecycleEvent in eventMap) {
         var method = eventMap[lifecycleEvent];
