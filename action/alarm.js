@@ -42,7 +42,7 @@ function main(msg) {
     var webparams = common.createWebParams(msg);
     var apiHost = addHTTPS(endpoint);
 
-    var url = `${apiHost}/api/v1/web/whisk.system/alarmsWeb/alarmWebAction.http`;
+    var url = `${apiHost}/api/v1/web/whisk.system/alarmsWeb/alarmWebAction`;
 
     if (lifecycleEvent in eventMap) {
         var method = eventMap[lifecycleEvent];
