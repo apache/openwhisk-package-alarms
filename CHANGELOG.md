@@ -19,6 +19,13 @@
 
 # Changelog
 
+## 2.2.0
+* NodeJS version: 10.21.0
+* Handle URL params gently (#219)
+* Add missing npm install. (#218)
+* Fix can't update strict (#217)
+* Make get the strict value correctly when using wsk trigger to get (#216)
+
 ## 2.1.0
 
 * NodeJS version: 10.20.1
