@@ -1,6 +1,6 @@
 {
   "name": "@openwhisk/alarms-trigger",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "A service to trigger OpenWhisk triggers based on cron notation",
   "main": "app.js",
   "license": "Apache-2.0",
