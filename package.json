@@ -8,7 +8,7 @@
   "repository": "github:apache/openwhisk-package-alarms",
   "dependencies": {
     "body-parser": "^1.15.0",
-    "cron": "1.7.0",
+    "cron": "1.8.2",
     "express": "^4.13.4",
     "lodash": "^4.5.0",
     "nano": "6.4.4",
