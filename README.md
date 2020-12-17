@@ -20,7 +20,7 @@
 # Apache OpenWhisk Alarm Package
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
-[![Build Status](https://travis-ci.org/apache/openwhisk-package-alarms.svg?branch=master)](https://travis-ci.org/apache/openwhisk-package-alarms)
+[![Build Status](https://travis-ci.com/apache/openwhisk-package-alarms.svg?branch=master)](https://travis-ci.com/apache/openwhisk-package-alarms)
 
 The `/whisk.system/alarms` package can be used to fire a trigger at a specified frequency. Alarms are useful for setting up recurring jobs or tasks, such as invoking a system backup action every hour.
 
