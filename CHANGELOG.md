@@ -18,6 +18,8 @@
 -->
 
 # Changelog
+## Next
+* NodeJS version: 10.24.0
 
 ## 2.2.0
 * NodeJS version: 10.21.0
