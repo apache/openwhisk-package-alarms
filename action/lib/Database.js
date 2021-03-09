@@ -23,17 +23,17 @@ module.exports = function(dbURL, dbName, dbUsername, dbPassword) {
     this.db = nano.db.use(dbName);
     var utilsDB = this;
 
-    this.getWorkerID = function(availabeWorkers) {
+    this.getWorkerID = function(availableWorkers) {
 
         return new Promise((resolve, reject) => {
-            var workerID = availabeWorkers[0] || 'worker0';
+            var workerID = availableWorkers[0] || 'worker0';
 
-            if (availabeWorkers.length > 1) {
+            if (availableWorkers.length > 1) {
                 utilsDB.db.view('triggerViews', 'triggers_by_worker', {reduce: true, group: true}, function (err, body) {
                     if (!err) {
                         var triggersByWorker = {};
 
-                        availabeWorkers.forEach(worker => {
+                        availableWorkers.forEach(worker => {
                             triggersByWorker[worker] = 0;
                         });
 
