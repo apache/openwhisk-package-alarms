@@ -33,7 +33,6 @@ The package includes the following feeds.
 | `/whisk.system/alarms/once` | feed | date, trigger_payload, deleteAfterFire | Fire Trigger event once on a specific date. |
 | `/whisk.system/alarms/alarm` | feed | cron, trigger_payload, startDate, stopDate | Fire Trigger event on a time-based schedule using cron. |
 
-
 ## Firing a trigger event periodically on an interval based schedule
 
 The `/whisk.system/alarms/interval` feed configures the Alarm service to fire a Trigger event on an interval based schedule. The parameters are as follows:
