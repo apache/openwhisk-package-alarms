@@ -20,8 +20,8 @@
 # Changelog
 
 ## Next
-
-* NodeJS version: 10.24.0
+* Switch from Node.js 10 to Node.js 14 (#229)
+* Bump up cron to 1.8.2 (#223)
 
 ## 2.2.0
 
