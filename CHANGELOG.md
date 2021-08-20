@@ -19,12 +19,12 @@
 
 # Changelog
 
-## Next
+## 2.3.0
 * Switch from Node.js 10 to Node.js 14 (#229)
 * Bump up cron to 1.8.2 (#223)
+* Update akka versions to track core repo (#231)
 
 ## 2.2.0
-
 * NodeJS version: 10.21.0
 * Handle URL params gently (#219)
 * Add missing npm install. (#218)
@@ -32,7 +32,6 @@
 * Make get the strict value correctly when using wsk trigger to get (#216)
 
 ## 2.1.0
-
 * NodeJS version: 10.20.1
 * Update existing trigger feeds on create instead of failing (#202)
 * Add `strict` option while get trigger (#210)
@@ -43,5 +42,4 @@
 * remove use of short header in all cases (#193)
 
 ## 2.0.0-incubating
-
 * First Apache Release
