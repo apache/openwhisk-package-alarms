@@ -46,7 +46,7 @@ module.exports = function(logger, triggerDB, redisClient) {
     this.redisClient = redisClient;
     this.redisKey = redisKeyPrefix + '_' + this.worker;
     this.redisField = constants.REDIS_FIELD;
-    this.uriHost ='https://' + this.routerHost;
+    this.uriHost ='http://' + this.routerHost;
     this.sanitizer = new Sanitizer(logger, this);
     this.monitorStatus = {};
 

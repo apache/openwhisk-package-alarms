@@ -53,7 +53,7 @@ DB_NAME="${6}alarmservice"
 DB_USERNAME="$7"
 DB_PASSWORD="$8"
 LIMIT_CRON_FIELDS="${LIMIT_CRON_FIELDS}"
-ACTION_RUNTIME_VERSION=${ACTION_RUNTIME_VERSION:="nodejs:14"}
+ACTION_RUNTIME_VERSION=${ACTION_RUNTIME_VERSION:="nodejs:18"}
 
 # If the auth key file exists, read the key in the file. Otherwise, take the
 # first argument as the key itself.
